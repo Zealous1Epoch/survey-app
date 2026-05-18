@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import QuestionEditor from "@/components/question-editor";
-import { QuestionData } from "@/lib/db/questions";
+import type { QuestionData } from "@/lib/db/questions";
 
 export default function NewSurveyPage() {
   const router = useRouter();

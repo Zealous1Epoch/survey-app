@@ -1,6 +1,6 @@
 "use client";
 
-import { QuestionType, QuestionData } from "@/lib/db/questions";
+import type { QuestionType, QuestionData } from "@/lib/db/questions";
 import { useRef } from "react";
 
 interface Props {

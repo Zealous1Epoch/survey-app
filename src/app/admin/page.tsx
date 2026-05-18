@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { SurveyWithCounts } from "@/lib/db/surveys";
+import type { SurveyWithCounts } from "@/lib/db/surveys";
 
 export default function AdminPage() {
   const [surveys, setSurveys] = useState<SurveyWithCounts[]>([]);

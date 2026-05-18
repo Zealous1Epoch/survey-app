@@ -1,6 +1,6 @@
 "use client";
 
-import { ResponseRow } from "@/lib/db/responses";
+import type { ResponseRow } from "@/lib/db/responses";
 
 interface Props {
   data: ResponseRow[];
