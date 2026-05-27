@@ -57,6 +57,18 @@ export default function SurveyDataPage() {
     window.open(`/api/admin/surveys/${id}/export`, "_blank");
   };
 
+  const handleDeleteSubmission = async (submissionId: string) => {
+    if (!confirm("确定删除这条回答？")) return;
+    await fetch(`/api/admin/surveys/${id}/responses?submission_id=${submissionId}`, { method: "DELETE" });
+    setSubmissions((prev) => prev.filter((s) => s.submission_id !== submissionId));
+  };
+
+  const handleClearAll = async () => {
+    if (!confirm("确定清空该问卷的所有回答？此操作不可恢复。")) return;
+    await fetch(`/api/admin/surveys/${id}/responses`, { method: "DELETE" });
+    setSubmissions([]);
+  };
+
   const activeStats = activeQ ? stats[activeQ] : null;
 
   if (loading) {
@@ -101,6 +113,11 @@ export default function SurveyDataPage() {
               </svg>
               导出 Excel
             </button>
+            {submissions.length > 0 && (
+              <button onClick={handleClearAll} className="btn-danger">
+                清空回答
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -208,6 +225,9 @@ export default function SurveyDataPage() {
                       <th className="px-4 py-3 text-xs font-medium tracking-wide uppercase whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
                         提交时间
                       </th>
+                      <th className="px-4 py-3 text-xs font-medium tracking-wide uppercase whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
+                        操作
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -240,6 +260,15 @@ export default function SurveyDataPage() {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <button
+                            onClick={() => handleDeleteSubmission(sub.submission_id)}
+                            className="text-xs transition-colors hover:text-red-500"
+                            style={{ color: "var(--text-muted)" }}
+                          >
+                            删除
+                          </button>
                         </td>
                       </tr>
                     ))}

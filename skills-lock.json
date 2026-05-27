@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "html-design": {
+      "source": "Zealous1Epoch/html-design-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "9386f690069f213318ff4894d80ae5c90841d7aedf15331a7b34fe86721c9cf0"
+    }
+  }
+}

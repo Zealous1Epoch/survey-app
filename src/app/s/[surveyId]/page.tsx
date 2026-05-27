@@ -34,6 +34,7 @@ export default function SurveyAnswerPage({
   const [fieldError, setFieldError] = useState("");
   const [done, setDone] = useState(false);
   const [zoomImg, setZoomImg] = useState<string | null>(null);
+  const [animKey, setAnimKey] = useState(0);
 
   useEffect(() => {
     fetch(`/api/s/${surveyId}`)
@@ -75,12 +76,14 @@ export default function SurveyAnswerPage({
       handleSubmitAll();
     } else {
       setStep((s) => s + 1);
+      setAnimKey((k) => k + 1);
     }
   };
 
   const handlePrev = () => {
     setStep((s) => Math.max(0, s - 1));
     setFieldError("");
+    setAnimKey((k) => k + 1);
   };
 
   const handleSubmitAll = async () => {
@@ -115,8 +118,7 @@ export default function SurveyAnswerPage({
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--bg-primary)" }}>
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2" style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }} />
+        <div style={{ animation: "pulse 1.8s ease-in-out infinite" }}>
           <p className="text-sm" style={{ color: "var(--text-muted)" }}>加载中...</p>
         </div>
       </div>
@@ -126,122 +128,171 @@ export default function SurveyAnswerPage({
   if (error || !survey) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-5" style={{ background: "var(--bg-primary)" }}>
-        <p className="mb-2 text-lg font-medium" style={{ color: "var(--accent)" }}>{error || "问卷不存在"}</p>
-        <p className="text-sm" style={{ color: "var(--text-muted)" }}>请确认二维码是否正确</p>
+        <p className="mb-2 text-lg font-semibold" style={{ color: "var(--accent)" }}>{error || "问卷不存在"}</p>
+        <p className="text-sm" style={{ color: "var(--text-muted)" }}>请确认链接是否正确</p>
       </div>
     );
   }
 
   if (done) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-5" style={{ background: "var(--bg-primary)" }}>
-        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full" style={{ background: "var(--accent-green-light)" }}>
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-            <path d="M7 14l5 5 9-9" stroke="var(--accent-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+      <div className="flex min-h-screen items-center justify-center px-5" style={{ background: "var(--bg-primary)" }}>
+        <div className="card" style={{ textAlign: "center", maxWidth: 480, width: "100%" }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: "2rem" }}>
+            <svg width="80" height="80" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="36" fill="none" stroke="var(--primary-light)" strokeWidth="3" />
+              <path
+                d="M24 40 L36 52 L56 28"
+                fill="none"
+                stroke="var(--primary)"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray="60"
+                strokeDashoffset="60"
+                style={{ animation: "draw 0.5s 0.2s ease-out forwards" }}
+              />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold mb-2" style={{ color: "var(--primary)" }}>提交成功</h2>
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>感谢你的回答</p>
         </div>
-        <h2 className="mb-2 text-xl font-semibold" style={{ color: "var(--text-primary)" }}>提交成功</h2>
-        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>感谢你的回答</p>
       </div>
     );
   }
 
+  const pct = total > 0 ? ((step) / total) * 100 : 0;
+
   return (
-    <div className="mx-auto flex min-h-screen max-w-lg flex-col px-5 py-6" style={{ background: "var(--bg-primary)" }}>
-      {/* Progress bar */}
-      <div className="mb-8">
-        <div className="h-1 w-full rounded-full" style={{ background: "var(--bg-subtle)" }}>
-          <div
-            className="h-full rounded-full transition-all duration-500 ease-out"
-            style={{ width: `${((step + 1) / total) * 100}%`, background: "var(--accent)" }}
-          />
+    <div style={{ background: "var(--bg-primary)", minHeight: "100vh" }}>
+      {/* Navbar */}
+      <nav className="navbar">
+        <span style={{ fontSize: 20, fontWeight: 700, color: "var(--primary)", letterSpacing: -0.3 }}>
+          {survey.title}
+        </span>
+        <span style={{ fontSize: 13, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--primary)", display: "inline-block" }} />
+          进行中
+        </span>
+      </nav>
+
+      <div className="mx-auto flex min-h-screen max-w-2xl flex-col px-5" style={{ paddingTop: "calc(var(--nav-height) + 2rem)", paddingBottom: "3rem" }}>
+        {/* Progress */}
+        <div className="mb-8">
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13, color: "var(--text-muted)", fontWeight: 500 }}>
+            <span>第 {step + 1} / {total} 题</span>
+            <span style={{ color: "var(--primary)", fontWeight: 600 }}>{Math.round(pct)}%</span>
+          </div>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: `${pct}%` }} />
+          </div>
         </div>
-        <p className="mt-3 text-xs font-medium" style={{ color: "var(--text-muted)" }}>
-          第 {step + 1} / {total} 题
-        </p>
-      </div>
 
-      {/* Question */}
-      {question && (
-        <div className="flex-1 animate-in">
-          <QuestionBadge type={question.type} />
+        {/* Question card */}
+        <div className="flex-1" key={animKey}>
+          <div className="card animate-in">
+            <QuestionBadge type={question?.type ?? ""} />
 
-          {question.image_url && (
-            <div className="mb-6 mt-4">
-              <img
-                src={question.image_url}
-                alt="题目图片"
-                className="w-full cursor-pointer rounded-lg border object-cover"
-                style={{ borderColor: "var(--border)", maxHeight: "40vh" }}
-                onClick={() => setZoomImg(question.image_url)}
+            {question?.image_url && (
+              <div style={{ marginBottom: "1.5rem", marginTop: "1rem" }}>
+                <img
+                  src={question.image_url}
+                  alt="题目图片"
+                  style={{ width: "100%", maxHeight: "40vh", objectFit: "cover", borderRadius: "var(--radius-sm)", cursor: "pointer", border: "1px solid var(--border)" }}
+                  onClick={() => setZoomImg(question.image_url)}
+                />
+                <p style={{ marginTop: 6, fontSize: 12, textAlign: "center", color: "var(--text-muted)" }}>
+                  点击图片可放大
+                </p>
+              </div>
+            )}
+
+            <h2 style={{
+              marginTop: question?.image_url ? 0 : "1.5rem",
+              marginBottom: "2rem",
+              fontSize: 28,
+              fontWeight: 700,
+              color: "var(--text-primary)",
+              lineHeight: 1.3,
+              letterSpacing: -0.4,
+            }}>
+              {question?.title}
+            </h2>
+
+            {question && (
+              <AnswerInput
+                question={question}
+                value={getVal(question.id, question.type)}
+                onChange={(v) => setVal(question.id, v)}
               />
-              <p className="mt-1.5 text-xs text-center" style={{ color: "var(--text-muted)" }}>
-                点击图片可放大
-              </p>
+            )}
+
+            {fieldError && (
+              <div style={{
+                marginTop: "1.5rem",
+                padding: "0.75rem 1rem",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--accent-light)",
+                color: "var(--accent)",
+                fontSize: 14,
+                fontWeight: 500,
+              }}>
+                {fieldError}
+              </div>
+            )}
+
+            {/* Navigation */}
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "2.5rem", gap: 12 }}>
+              {step > 0 ? (
+                <button onClick={handlePrev} className="btn-secondary">
+                  上一题
+                </button>
+              ) : <span />}
+              <button
+                onClick={handleNext}
+                disabled={submitting}
+                className="btn-primary"
+              >
+                {submitting ? "提交中..." : isLast ? "提交问卷" : "下一题"}
+              </button>
             </div>
-          )}
-
-          <h2 className="mt-4 mb-8 text-lg font-medium leading-relaxed" style={{ color: "var(--text-primary)" }}>
-            {question.title}
-          </h2>
-
-          <AnswerInput
-            question={question}
-            value={getVal(question.id, question.type)}
-            onChange={(v) => setVal(question.id, v)}
-          />
-
-          {fieldError && (
-            <div className="mt-4 rounded-md px-4 py-3 text-sm animate-in" style={{ background: "var(--accent-light)", color: "var(--accent)" }}>
-              {fieldError}
-            </div>
-          )}
+          </div>
         </div>
-      )}
 
-      {/* Navigation */}
-      <div className="mt-8 flex items-center gap-3">
-        {step > 0 && (
-          <button onClick={handlePrev} className="btn-secondary flex-shrink-0 px-4">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mr-1">
-              <path d="M9 3L5 7l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            上一题
-          </button>
-        )}
-        <button
-          onClick={handleNext}
-          disabled={submitting}
-          className="btn-primary flex-1 py-3.5 text-base"
-        >
-          {submitting ? "提交中..." : isLast ? "提交" : "下一题"}
-        </button>
-      </div>
-
-      {/* Bottom */}
-      <div className="mt-auto pt-8 pb-4 text-center">
-        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-          由MuGuang提供支持
-        </p>
+        {/* Footer */}
+        <div style={{ textAlign: "center", paddingTop: "3rem", paddingBottom: "1rem" }}>
+          <span className="badge">由MuGuang提供支持</span>
+        </div>
       </div>
 
       {/* Image lightbox */}
       {zoomImg && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(44, 36, 22, 0.9)" }}
+          style={{
+            position: "fixed", inset: 0, zIndex: 200,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "1rem", background: "rgba(0,0,0,0.85)",
+          }}
           onClick={() => setZoomImg(null)}
         >
           <button
             onClick={() => setZoomImg(null)}
-            className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-white"
-            style={{ background: "rgba(255,255,255,0.15)" }}
+            style={{
+              position: "absolute", top: 16, right: 16,
+              width: 36, height: 36, borderRadius: "50%",
+              background: "rgba(255,255,255,0.15)", color: "#fff",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              border: "none", cursor: "pointer", fontSize: 18,
+            }}
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
+            ✕
           </button>
-          <img src={zoomImg} alt="查看大图" className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain" onClick={(e) => e.stopPropagation()} />
+          <img
+            src={zoomImg}
+            alt="查看大图"
+            style={{ maxHeight: "90vh", maxWidth: "90vw", borderRadius: 12, objectFit: "contain" }}
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>
@@ -250,7 +301,7 @@ export default function SurveyAnswerPage({
 
 /* ---- Badge ---- */
 const badgeMap: Record<string, { text: string; color: string }> = {
-  choice: { text: "单选", color: "#C8694A" },
+  choice: { text: "单选", color: "var(--accent)" },
   multi: { text: "多选", color: "#7D9B8F" },
   text: { text: "填空", color: "#8B7E6A" },
   rating: { text: "评分", color: "#C8A45A" },
@@ -258,11 +309,7 @@ const badgeMap: Record<string, { text: string; color: string }> = {
 
 function QuestionBadge({ type }: { type: string }) {
   const b = badgeMap[type] ?? { text: type, color: "var(--text-muted)" };
-  return (
-    <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium" style={{ background: `${b.color}12`, color: b.color }}>
-      {b.text}
-    </span>
-  );
+  return <span className="badge">{b.text}</span>;
 }
 
 /* ---- Answer Input ---- */
@@ -279,30 +326,57 @@ function AnswerInput({
 
   if (t === "choice") {
     return (
-      <div className="space-y-2">
-        {question.options.map((opt, i) => (
-          <div
-            key={i}
-            role="radio"
-            aria-checked={value === opt}
-            tabIndex={0}
-            className="flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3.5 transition-all"
-            style={{
-              borderColor: value === opt ? "var(--accent)" : "var(--border)",
-              background: value === opt ? "var(--accent-light)" : "var(--bg-card)",
-            }}
-            onClick={() => onChange(opt)}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onChange(opt); }}
-          >
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {question.options.map((opt, i) => {
+          const selected = value === opt;
+          return (
             <div
-              className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2"
-              style={{ borderColor: value === opt ? "var(--accent)" : "var(--border)" }}
+              key={i}
+              role="radio"
+              aria-checked={selected}
+              tabIndex={0}
+              className={selected ? "option-selected" : "option-default"}
+              style={{
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "1rem 1.25rem",
+                border: selected ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
+                borderRadius: "var(--radius-sm)",
+                cursor: "pointer",
+                background: selected ? "var(--primary-light)" : "rgba(255,255,255,0.3)",
+                fontWeight: 500,
+                fontSize: 15,
+                transition: "all 0.3s ease-out",
+              }}
+              onClick={() => onChange(opt)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onChange(opt); }}
+              onMouseEnter={(e) => {
+                if (!selected) {
+                  e.currentTarget.style.transform = "translateY(-4px)";
+                  e.currentTarget.style.boxShadow = "var(--shadow-lg)";
+                  e.currentTarget.style.borderColor = "var(--primary)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!selected) {
+                  e.currentTarget.style.transform = "";
+                  e.currentTarget.style.boxShadow = "";
+                  e.currentTarget.style.borderColor = "var(--border)";
+                }
+              }}
             >
-              {value === opt && <div className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--accent)" }} />}
+              <div style={{
+                width: 22, height: 22, borderRadius: "50%",
+                border: selected ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+                background: selected ? "var(--primary)" : "transparent",
+              }}>
+                {selected && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#fff" }} />}
+              </div>
+              <span>{opt}</span>
             </div>
-            <span className="text-sm">{opt}</span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   }
@@ -310,7 +384,7 @@ function AnswerInput({
   if (t === "multi") {
     const selected: string[] = JSON.parse(value || "[]");
     return (
-      <div className="space-y-2">
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {question.options.map((opt, i) => {
           const checked = selected.includes(opt);
           const toggle = () => {
@@ -323,28 +397,48 @@ function AnswerInput({
               role="checkbox"
               aria-checked={checked}
               tabIndex={0}
-              className="flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3.5 transition-all"
               style={{
-                borderColor: checked ? "var(--accent-green)" : "var(--border)",
-                background: checked ? "var(--accent-green-light)" : "var(--bg-card)",
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "1rem 1.25rem",
+                border: checked ? "1.5px solid var(--accent-green)" : "1.5px solid var(--border)",
+                borderRadius: "var(--radius-sm)",
+                cursor: "pointer",
+                background: checked ? "var(--accent-green-light)" : "rgba(255,255,255,0.3)",
+                fontWeight: 500,
+                fontSize: 15,
+                transition: "all 0.3s ease-out",
               }}
               onClick={toggle}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") toggle(); }}
+              onMouseEnter={(e) => {
+                if (!checked) {
+                  e.currentTarget.style.transform = "translateY(-4px)";
+                  e.currentTarget.style.boxShadow = "var(--shadow-lg)";
+                  e.currentTarget.style.borderColor = "var(--accent-green)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!checked) {
+                  e.currentTarget.style.transform = "";
+                  e.currentTarget.style.boxShadow = "";
+                  e.currentTarget.style.borderColor = "var(--border)";
+                }
+              }}
             >
-              <div
-                className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border-2"
-                style={{
-                  borderColor: checked ? "var(--accent-green)" : "var(--border)",
-                  background: checked ? "var(--accent-green)" : "transparent",
-                }}
-              >
+              <div style={{
+                width: 22, height: 22, borderRadius: 6,
+                border: checked ? "1.5px solid var(--accent-green)" : "1.5px solid var(--border)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+                background: checked ? "var(--accent-green)" : "transparent",
+              }}>
                 {checked && (
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M2.5 6l2.5 2.5 4.5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 )}
               </div>
-              <span className="text-sm">{opt}</span>
+              <span>{opt}</span>
             </div>
           );
         })}
@@ -359,7 +453,7 @@ function AnswerInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder="请输入你的回答..."
         rows={4}
-        className="textarea-field text-base"
+        className="textarea-field"
         style={{ minHeight: 120 }}
       />
     );
@@ -367,8 +461,8 @@ function AnswerInput({
 
   if (t === "rating") {
     return (
-      <div className="text-center">
-        <div className="inline-flex items-center gap-2">
+      <div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
           {[1, 2, 3, 4, 5].map((star) => {
             const active = Number(value) >= star;
             return (
@@ -376,15 +470,42 @@ function AnswerInput({
                 key={star}
                 type="button"
                 onClick={() => onChange(String(star))}
-                className="transition-all duration-150 hover:scale-110"
-                style={{ fontSize: "2.5rem", color: active ? "#C8A45A" : "var(--border)", transform: active ? "scale(1.1)" : "scale(1)" }}
+                style={{
+                  width: 52, height: 52, borderRadius: "50%",
+                  border: active ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
+                  background: active ? "var(--primary)" : "rgba(255,255,255,0.4)",
+                  color: active ? "#fff" : "var(--text-primary)",
+                  fontSize: 18, fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  transition: "all 0.3s ease-out",
+                }}
+                onMouseEnter={(e) => {
+                  if (!active) {
+                    e.currentTarget.style.transform = "translateY(-4px)";
+                    e.currentTarget.style.boxShadow = "var(--shadow-lg)";
+                    e.currentTarget.style.borderColor = "var(--primary)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!active) {
+                    e.currentTarget.style.transform = "";
+                    e.currentTarget.style.boxShadow = "";
+                    e.currentTarget.style.borderColor = "var(--border)";
+                  }
+                }}
+                onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
+                onMouseUp={(e) => { e.currentTarget.style.transform = ""; }}
               >
-                &#9733;
+                {star}
               </button>
             );
           })}
         </div>
-        {Number(value) > 0 && <p className="mt-3 text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{Number(value)} / 5</p>}
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 12, color: "var(--text-muted)" }}>
+          <span>非常不满意</span>
+          <span>非常满意</span>
+        </div>
       </div>
     );
   }

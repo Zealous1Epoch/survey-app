@@ -157,6 +157,20 @@ export function getStats(surveyId: string): Record<
   return stats;
 }
 
+export function deleteSubmission(surveyId: string, submissionId: string): boolean {
+  const db = getDb();
+  const result = db
+    .prepare("DELETE FROM responses WHERE survey_id = ? AND submission_id = ?")
+    .run(surveyId, submissionId);
+  return result.changes > 0;
+}
+
+export function clearResponses(surveyId: string): boolean {
+  const db = getDb();
+  const result = db.prepare("DELETE FROM responses WHERE survey_id = ?").run(surveyId);
+  return result.changes > 0;
+}
+
 /** Export: one row per person, columns = questions + submission time */
 export function getExportRows(
   surveyId: string

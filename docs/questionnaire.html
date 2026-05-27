@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>问卷调查</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #FAF2E0;
+  --primary: #3D7695;
+  --text: #4a4a4f;
+  --accent: #f59e0b;
+  --text-light: #8a8a8f;
+  --radius: 20px;
+  --radius-sm: 12px;
+  --shadow: 0 4px 20px rgba(0,0,0,0.06);
+  --shadow-hover: 0 12px 32px rgba(0,0,0,0.10);
+  --spacing: 8px;
+  --nav-height: 64px;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Navbar */
+.navbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--nav-height);
+  background: rgba(250, 242, 224, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 calc(var(--spacing) * 4);
+  z-index: 100;
+  transition: box-shadow 0.3s;
+}
+.navbar.scrolled { box-shadow: 0 1px 0 rgba(0,0,0,0.06); }
+.navbar-brand {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: -0.3px;
+}
+.navbar-status {
+  font-size: 13px;
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+/* Main container */
+.main {
+  padding-top: var(--nav-height);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--spacing) * 6) calc(var(--spacing) * 3);
+}
+
+/* Survey card */
+.survey-container {
+  width: 100%;
+  max-width: 680px;
+}
+
+/* Progress */
+.progress-wrap {
+  margin-bottom: calc(var(--spacing) * 4);
+}
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: calc(var(--spacing) * 1);
+  font-size: 13px;
+  color: var(--text-light);
+  font-weight: 500;
+}
+.progress-info span:last-child {
+  color: var(--primary);
+  font-weight: 600;
+}
+.progress-bar {
+  height: 6px;
+  background: rgba(61, 118, 149, 0.12);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 99px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Card */
+.card {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.5);
+  border-radius: var(--radius);
+  padding: calc(var(--spacing) * 5);
+  box-shadow: var(--shadow);
+  transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+  animation: cardIn 0.4s ease-out;
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.card-question-num {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: calc(var(--spacing) * 2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-question-num::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.card-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+  margin-bottom: calc(var(--spacing) * 4);
+  letter-spacing: -0.4px;
+}
+
+/* Options */
+.options { display: flex; flex-direction: column; gap: calc(var(--spacing) * 1.5); }
+
+.option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 2.5);
+  border: 1.5px solid rgba(61, 118, 149, 0.15);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.3s ease-out;
+  background: rgba(255,255,255,0.3);
+  font-weight: 500;
+}
+.option:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--primary);
+  background: rgba(61, 118, 149, 0.04);
+}
+.option.selected {
+  border-color: var(--primary);
+  background: rgba(61, 118, 149, 0.08);
+}
+
+.option input { display: none; }
+.option-radio, .option-check {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(61, 118, 149, 0.25);
+  margin-right: calc(var(--spacing) * 1.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+.option-check { border-radius: 6px; }
+.option.selected .option-radio,
+.option.selected .option-check {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+.option.selected .option-radio::after {
+  content: ''; width: 8px; height: 8px; border-radius: 50%; background: #fff;
+}
+.option.selected .option-check::after {
+  content: ''; width: 5px; height: 9px;
+  border: 2px solid #fff; border-top: none; border-left: none;
+  transform: rotate(45deg) translateY(-1px);
+}
+
+/* Text input */
+.input-field {
+  width: 100%;
+  padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 2);
+  border: 1.5px solid rgba(61, 118, 149, 0.2);
+  border-radius: var(--radius-sm);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  color: var(--text);
+  background: rgba(255,255,255,0.5);
+  outline: none;
+  transition: all 0.3s;
+  resize: vertical;
+  min-height: 100px;
+}
+.input-field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+.input-field::placeholder { color: #c0c0c5; }
+
+/* Textarea */
+.textarea-field {
+  width: 100%;
+  padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 2);
+  border: 1.5px solid rgba(61, 118, 149, 0.2);
+  border-radius: var(--radius-sm);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  color: var(--text);
+  background: rgba(255,255,255,0.5);
+  outline: none;
+  transition: all 0.3s;
+  resize: vertical;
+  min-height: 120px;
+}
+.textarea-field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+
+/* Rating */
+.rating-group { display: flex; gap: calc(var(--spacing) * 1); justify-content: center; }
+.rating-btn {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(61, 118, 149, 0.2);
+  background: rgba(255,255,255,0.4);
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.3s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rating-btn:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--primary);
+}
+.rating-btn.selected {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+}
+.rating-btn:active { transform: scale(0.95); }
+.rating-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: calc(var(--spacing) * 1);
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+/* Stars rating */
+.stars { display: flex; gap: calc(var(--spacing) * 0.5); justify-content: center; }
+.star {
+  font-size: 36px;
+  color: rgba(61, 118, 149, 0.15);
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+.star:hover { transform: translateY(-4px); }
+.star.active { color: var(--accent); }
+
+/* Buttons */
+.btn-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: calc(var(--spacing) * 5);
+  gap: calc(var(--spacing) * 1.5);
+}
+
+.btn {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 4);
+  border-radius: 99px;
+  cursor: pointer;
+  transition: all 0.3s ease-out;
+  letter-spacing: -0.2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn:active { transform: scale(0.95); transition: transform 0.1s; }
+
+.btn-secondary {
+  background: transparent;
+  border: 1.5px solid rgba(61, 118, 149, 0.2);
+  color: var(--text);
+}
+.btn-secondary:hover {
+  border-color: var(--primary);
+  background: rgba(61, 118, 149, 0.04);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow);
+}
+
+.btn-primary {
+  background: transparent;
+  border: 1.5px solid var(--primary);
+  color: var(--primary);
+}
+.btn-primary:hover {
+  background: var(--primary);
+  color: #fff;
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+}
+
+.btn-submit {
+  background: var(--primary);
+  border: 1.5px solid var(--primary);
+  color: #fff;
+}
+.btn-submit:hover {
+  background: #2d5f7a;
+  border-color: #2d5f7a;
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+}
+
+/* Completion */
+.completion {
+  text-align: center;
+  animation: cardIn 0.4s ease-out;
+}
+.checkmark-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: calc(var(--spacing) * 4);
+}
+.checkmark-svg { width: 80px; height: 80px; }
+.checkmark-circle {
+  fill: none;
+  stroke: rgba(61, 118, 149, 0.12);
+  stroke-width: 3;
+}
+.checkmark-path {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: draw 0.5s 0.2s ease-out forwards;
+}
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
+}
+.completion-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: calc(var(--spacing) * 2);
+  color: var(--primary);
+}
+.completion-desc {
+  font-size: 16px;
+  color: var(--text-light);
+  line-height: 1.6;
+}
+
+/* Loading pulse */
+.loading .card { animation: pulse 1.8s ease-in-out infinite; }
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 0.9; }
+}
+
+/* Count-up number */
+.count-up {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Observe animation */
+.obs-enter {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+.obs-enter.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .card { padding: calc(var(--spacing) * 3); }
+  .card-title { font-size: 22px; }
+  .rating-btn { width: 42px; height: 42px; font-size: 16px; }
+  .btn { padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 3); font-size: 14px; }
+}
+
+/* Tags */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-light);
+  padding: 4px 12px;
+  border-radius: 99px;
+  background: rgba(61, 118, 149, 0.06);
+}
+.tag::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+</style>
+</head>
+<body>
+<nav class="navbar" id="navbar">
+  <span class="navbar-brand">用户满意度调查</span>
+  <span class="navbar-status">
+    <span class="status-dot"></span>
+    进行中
+  </span>
+</nav>
+
+<main class="main" id="main">
+  <div class="survey-container" id="survey"></div>
+</main>
+
+<script>
+const questions = [
+  {
+    type: 'single',
+    title: '您使用我们的产品有多长时间了？',
+    tag: '基本信息',
+    options: ['不到 1 个月', '1–6 个月', '6–12 个月', '1 年以上', '2 年以上']
+  },
+  {
+    type: 'rating',
+    title: '总体而言，您对我们的产品有多满意？',
+    tag: '满意度',
+    options: ['1', '2', '3', '4', '5'],
+    labels: ['非常不满意', '非常满意']
+  },
+  {
+    type: 'stars',
+    title: '您会向朋友或同事推荐我们的产品吗？',
+    tag: 'NPS',
+  },
+  {
+    type: 'multiple',
+    title: '您最常使用哪些功能？（可多选）',
+    tag: '使用习惯',
+    options: ['数据看板', '报表导出', '实时监控', '团队协作', '自动化通知', 'API 集成']
+  },
+  {
+    type: 'text',
+    title: '您觉得我们最需要在哪些方面改进？',
+    tag: '反馈建议',
+    placeholder: '请分享您的想法，帮助我们做得更好...'
+  }
+];
+
+let current = 0;
+const answers = {};
+
+const survey = document.getElementById('survey');
+const navbar = document.getElementById('navbar');
+
+window.addEventListener('scroll', () => {
+  navbar.classList.toggle('scrolled', window.scrollY > 10);
+}, { passive: true });
+
+function renderQuestion(idx) {
+  const q = questions[idx];
+  const total = questions.length;
+  const pct = ((idx) / total) * 100;
+
+  survey.style.animation = 'none';
+  survey.offsetHeight;
+  survey.style.animation = '';
+
+  const saved = answers[idx];
+
+  let html = `
+    <div class="progress-wrap obs-enter">
+      <div class="progress-info"><span>第 ${idx + 1} 题 / 共 ${total} 题</span><span>${pct}%</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-question-num"><span class="tag">${q.tag}</span></div>
+      <h2 class="card-title">${q.title}</h2>
+  `;
+
+  if (q.type === 'single') {
+    html += '<div class="options">';
+    q.options.forEach((opt, i) => {
+      const sel = saved === i ? ' selected' : '';
+      html += `<label class="option${sel}" onclick="selectSingle(${idx}, ${i}, this)"><input type="radio" name="q${idx}"><span class="option-radio"></span>${opt}</label>`;
+    });
+    html += '</div>';
+  } else if (q.type === 'multiple') {
+    const selSet = new Set(saved || []);
+    html += '<div class="options">';
+    q.options.forEach((opt, i) => {
+      const sel = selSet.has(i) ? ' selected' : '';
+      html += `<label class="option${sel}" onclick="toggleMultiple(${idx}, ${i}, this)"><input type="checkbox"><span class="option-check"></span>${opt}</label>`;
+    });
+    html += '</div>';
+  } else if (q.type === 'text') {
+    html += `<textarea class="textarea-field" placeholder="${q.placeholder}" oninput="saveText(${idx}, this.value)">${saved || ''}</textarea>`;
+  } else if (q.type === 'rating') {
+    html += '<div class="rating-group">';
+    q.options.forEach((val) => {
+      const sel = saved == val ? ' selected' : '';
+      html += `<button class="rating-btn${sel}" onclick="saveRating(${idx}, '${val}', this)">${val}</button>`;
+    });
+    html += '</div>';
+    html += `<div class="rating-labels"><span>${q.labels[0]}</span><span>${q.labels[1]}</span></div>`;
+  } else if (q.type === 'stars') {
+    html += '<div class="stars">';
+    for (let i = 1; i <= 5; i++) {
+      const active = saved && i <= saved ? ' active' : '';
+      html += `<span class="star${active}" onclick="saveStars(${idx}, ${i})" onmouseenter="hoverStars(${i})" onmouseleave="unhoverStars(${idx})">★</span>`;
+    }
+    html += '</div>';
+  }
+
+  html += '<div class="btn-row">';
+  if (idx > 0) {
+    html += `<button class="btn btn-secondary" onclick="prevQuestion()">← 上一题</button>`;
+  } else {
+    html += '<span></span>';
+  }
+  if (idx < total - 1) {
+    html += `<button class="btn btn-primary" onclick="nextQuestion()" id="nextBtn">下一题 →</button>`;
+  } else {
+    html += `<button class="btn btn-submit" onclick="submitSurvey()" id="submitBtn">提交问卷</button>`;
+  }
+  html += '</div></div>';
+
+  survey.innerHTML = html;
+
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.obs-enter').forEach(el => el.classList.add('visible'));
+  });
+}
+
+function selectSingle(qIdx, optIdx, el) {
+  answers[qIdx] = optIdx;
+  el.parentElement.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function toggleMultiple(qIdx, optIdx, el) {
+  if (!answers[qIdx]) answers[qIdx] = [];
+  const arr = answers[qIdx];
+  const pos = arr.indexOf(optIdx);
+  if (pos > -1) arr.splice(pos, 1); else arr.push(optIdx);
+  el.classList.toggle('selected');
+}
+
+function saveText(qIdx, val) { answers[qIdx] = val; }
+
+function saveRating(qIdx, val, el) {
+  answers[qIdx] = val;
+  el.parentElement.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function saveStars(qIdx, val) {
+  answers[qIdx] = val;
+  document.querySelectorAll('.star').forEach((s, i) => s.classList.toggle('active', i < val));
+}
+function hoverStars(n) {
+  document.querySelectorAll('.star').forEach((s, i) => s.classList.toggle('active', i < n));
+}
+function unhoverStars(qIdx) {
+  const v = answers[qIdx] || 0;
+  document.querySelectorAll('.star').forEach((s, i) => s.classList.toggle('active', i < v));
+}
+
+function nextQuestion() {
+  current++;
+  renderQuestion(current);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function prevQuestion() {
+  current--;
+  renderQuestion(current);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function submitSurvey() {
+  survey.innerHTML = `
+    <div class="card completion">
+      <div class="checkmark-wrap">
+        <svg class="checkmark-svg" viewBox="0 0 80 80">
+          <circle class="checkmark-circle" cx="40" cy="40" r="36"/>
+          <path class="checkmark-path" d="M24 40 L36 52 L56 28"/>
+        </svg>
+      </div>
+      <h2 class="completion-title">感谢您的参与！</h2>
+      <p class="completion-desc">您的反馈对我们非常重要，<br>我们将认真对待每一条建议。</p>
+    </div>
+  `;
+  navbar.querySelector('.navbar-status').innerHTML = '<span class="status-dot" style="background:#22c55e"></span>已完成';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+renderQuestion(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>问卷月 — 系统架构全景图</title>
+<style>
+  :root {
+    --bg: #FBF8F4;
+    --card: #fff;
+    --text: #2C2416;
+    --text2: #6B5E4A;
+    --muted: #9B8E7A;
+    --accent: #C8694A;
+    --green: #7D9B8F;
+    --gold: #C8A45A;
+    --border: #E5DDD0;
+    --border-light: #F0EAE0;
+    --radius: 10px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 24px;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+
+  /* Header */
+  .header {
+    text-align: center; padding: 48px 0 40px;
+    border-bottom: 1px solid var(--border); margin-bottom: 48px;
+  }
+  .header h1 { font-size: 2.4rem; letter-spacing: -0.03em; margin-bottom: 8px; }
+  .header .sub { color: var(--text2); font-size: 1rem; }
+  .header .tags { margin-top: 16px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .tag {
+    display: inline-block; padding: 3px 12px; border-radius: 999px;
+    font-size: 0.8rem; font-weight: 500;
+  }
+  .tag-red { background: #C8694A18; color: var(--accent); }
+  .tag-green { background: #7D9B8F18; color: var(--green); }
+  .tag-brown { background: #8B7E6A18; color: #8B7E6A; }
+  .tag-gold { background: #C8A45A18; color: var(--gold); }
+
+  /* Section */
+  .section { margin-bottom: 56px; }
+  .section-title {
+    font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em;
+    margin-bottom: 20px; padding-left: 14px; border-left: 3px solid var(--accent);
+  }
+  .section-title.green { border-left-color: var(--green); }
+  .section-title.gold { border-left-color: var(--gold); }
+
+  /* Cards */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px 28px; margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.03);
+  }
+
+  /* Architecture diagram */
+  .arch-layer {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 20px 20px 16px;
+    margin-bottom: 10px;
+    position: relative;
+    background: var(--card);
+  }
+  .arch-layer-label {
+    position: absolute; top: -12px; left: 20px;
+    background: var(--bg); padding: 0 10px;
+    font-size: 0.8rem; font-weight: 600; color: var(--muted);
+    letter-spacing: 0.03em; text-transform: uppercase;
+  }
+  .arch-row {
+    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+  }
+  .arch-box {
+    border-radius: 8px; padding: 14px 20px; text-align: center;
+    font-size: 0.9rem; font-weight: 600; min-width: 100px;
+  }
+  .box-red { background: #C8694A12; border: 1.5px solid #C8694A40; color: var(--accent); }
+  .box-green { background: #7D9B8F12; border: 1.5px solid #7D9B8F40; color: var(--green); }
+  .box-brown { background: #8B7E6A12; border: 1.5px solid #8B7E6A40; color: #8B7E6A; }
+  .box-gold { background: #C8A45A12; border: 1.5px solid #C8A45A40; color: var(--gold); }
+  .box-gray { background: #F5F2ED; border: 1.5px solid var(--border); color: var(--text2); }
+  .arch-arrow {
+    text-align: center; font-size: 1.2rem; color: var(--muted);
+    margin: 4px 0;
+  }
+
+  /* ERD */
+  .erd { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .table-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .table-card-header {
+    padding: 10px 16px; font-weight: 700; font-size: 0.9rem;
+    letter-spacing: -0.01em; color: #fff;
+  }
+  .table-card-header.red { background: var(--accent); }
+  .table-card-header.green { background: var(--green); }
+  .table-card-header.gold { background: var(--gold); }
+  .table-card-body { padding: 8px 0; }
+  .col-row {
+    display: flex; align-items: center; padding: 5px 16px;
+    font-size: 0.82rem; border-bottom: 1px solid var(--border-light);
+  }
+  .col-row:last-child { border-bottom: none; }
+  .col-name { flex: 1; font-weight: 600; color: var(--text); }
+  .col-type { color: var(--muted); font-size: 0.78rem; margin-right: 8px; }
+  .col-key { font-size: 0.7rem; padding: 1px 6px; border-radius: 4px; font-weight: 500; }
+  .key-pk { background: #C8694A12; color: var(--accent); }
+  .key-fk { background: #7D9B8F12; color: var(--green); }
+
+  /* Flow */
+  .flow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; padding: 16px 0; }
+  .flow-step {
+    border-radius: 8px; padding: 12px 18px; text-align: center;
+    font-size: 0.85rem; font-weight: 600;
+  }
+  .flow-arrow { font-size: 1.4rem; color: var(--muted); font-weight: 300; }
+
+  /* Code */
+  .code-block {
+    background: #2C2416; color: #E5DDD0; border-radius: 8px;
+    padding: 16px 20px; font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-size: 0.8rem; line-height: 1.7; overflow-x: auto;
+  }
+  .code-block .kw { color: #C8A45A; }
+  .code-block .str { color: #7D9B8F; }
+  .code-block .fn { color: #C8694A; }
+  .code-block .cm { color: #6B5E4A; }
+
+  /* Route table */
+  table.routes { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  table.routes th {
+    text-align: left; padding: 8px 12px; font-size: 0.72rem;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--muted); border-bottom: 2px solid var(--border);
+  }
+  table.routes td {
+    padding: 8px 12px; border-bottom: 1px solid var(--border-light);
+  }
+  table.routes .method {
+    font-weight: 700; font-size: 0.72rem; display: inline-block;
+    width: 44px; text-align: center; padding: 2px 0; border-radius: 4px;
+  }
+  .m-get { background: #7D9B8F18; color: var(--green); }
+  .m-post { background: #C8694A18; color: var(--accent); }
+  .m-put { background: #C8A45A18; color: var(--gold); }
+  .m-del { background: #c84a4a18; color: #c84a4a; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 16px 0; }
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; text-align: center;
+  }
+  .stat-num { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.03em; color: var(--accent); }
+  .stat-label { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+
+  /* Footer */
+  .footer {
+    text-align: center; padding: 40px 0 24px; color: var(--muted);
+    font-size: 0.82rem; border-top: 1px solid var(--border);
+    margin-top: 48px;
+  }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 0.7rem; font-weight: 600; margin-left: 6px;
+  }
+  .badge-red { background: #C8694A18; color: var(--accent); }
+  .badge-green { background: #7D9B8F18; color: var(--green); }
+
+  .highlight { color: var(--accent); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- ====== Header ====== -->
+<header class="header">
+  <h1>📋 问卷月 · 私密问卷系统</h1>
+  <p class="sub">轻量级扫码答题工具 — 匿名问卷 · 数据私密 · 即开即用</p>
+  <div class="tags">
+    <span class="tag tag-red">Next.js 15</span>
+    <span class="tag tag-green">better-sqlite3</span>
+    <span class="tag tag-brown">Tailwind CSS</span>
+    <span class="tag tag-gold">QR Code</span>
+    <span class="tag tag-red">TypeScript</span>
+    <span class="tag tag-green">Excel Export</span>
+  </div>
+</header>
+
+<!-- ====== 宏观架构 ====== -->
+<div class="section">
+  <h2 class="section-title">系统架构总览</h2>
+
+  <!-- 用户层 -->
+  <div class="arch-layer" style="margin-bottom:8px">
+    <span class="arch-layer-label">用户入口</span>
+    <div class="arch-row">
+      <div class="arch-box box-green">📱 扫码答题<br><small style="font-weight:400">/s/:surveyId</small></div>
+      <div class="arch-box box-green">📱 单题回答<br><small style="font-weight:400">/s/:id/:qid</small></div>
+      <div class="arch-box box-red">🖥 管理后台<br><small style="font-weight:400">/admin</small></div>
+    </div>
+  </div>
+
+  <div class="arch-arrow">⬇</div>
+
+  <!-- 网络层 -->
+  <div class="arch-layer">
+    <span class="arch-layer-label">网络层</span>
+    <div class="arch-row">
+      <div class="arch-box box-gold">☁️ Cloudflare Tunnel<br><small style="font-weight:400">qanda.050423.xyz</small></div>
+      <div class="arch-box box-gray">🔐 Middleware<br><small style="font-weight:400">密码验证 · Cookie 检查</small></div>
+    </div>
+  </div>
+
+  <div class="arch-arrow">⬇</div>
+
+  <!-- Next.js -->
+  <div class="arch-layer">
+    <span class="arch-layer-label">Next.js 15 App Router</span>
+    <div class="arch-row">
+      <div class="arch-box box-red">🖥 管理页面<br><small style="font-weight:400">5 个路由页面</small></div>
+      <div class="arch-box box-green">📱 答题页面<br><small style="font-weight:400">3 个路由页面</small></div>
+      <div class="arch-box box-brown">🔌 API Routes<br><small style="font-weight:400">10 个端点</small></div>
+      <div class="arch-box box-gray">🧩 共享组件<br><small style="font-weight:400">4 个组件</small></div>
+    </div>
+  </div>
+
+  <div class="arch-arrow">⬇</div>
+
+  <!-- 数据层 -->
+  <div class="arch-layer" style="margin-bottom:8px">
+    <span class="arch-layer-label">数据层</span>
+    <div class="arch-row">
+      <div class="arch-box box-green">🗄 SQLite<br><small style="font-weight:400">better-sqlite3 · WAL 模式</small></div>
+      <div class="arch-box box-brown">📁 文件上传<br><small style="font-weight:400">public/uploads/</small></div>
+      <div class="arch-box box-gold">📊 Excel 导出<br><small style="font-weight:400">exceljs</small></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 数据模型 ====== -->
+<div class="section">
+  <h2 class="section-title green">数据模型 (ERD)</h2>
+  <div class="erd">
+    <div class="table-card">
+      <div class="table-card-header red">surveys · 问卷</div>
+      <div class="table-card-body">
+        <div class="col-row">
+          <span class="col-name">id</span><span class="col-type">TEXT</span><span class="col-key key-pk">PK</span>
+        </div>
+        <div class="col-row">
+          <span class="col-name">title</span><span class="col-type">TEXT</span>
+        </div>
+        <div class="col-row">
+          <span class="col-name">description</span><span class="col-type">TEXT</span>
+        </div>
+        <div class="col-row">
+          <span class="col-name">redirect_url</span><span class="col-type">TEXT</span>
+        </div>
+        <div class="col-row">
+          <span class="col-name">created_at</span><span class="col-type">TEXT (ISO)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-card-header green">questions · 题目</div>
+      <div class="table-card-body">
+        <div class="col-row">
+          <span class="col-name">id</span><span class="col-type">TEXT</span><span class="col-key key-pk">PK</span>
+        </div>
+        <div class="col-row">
+          <span class="col-name">survey_id</span><span class="col-type">TEXT</span><span class="col-key key-fk">FK → surveys</span>
+        </div>
+        <div class="col-row">
+          <span class="col-name">type</span><span class="col-type">TEXT</span><span class="badge badge-red">choice</span><span class="badge badge-green">multi</span><span class="badge">text</span><span class="badge badge-green">rating</span></div>
+        <div class="col-row">
+          <span class="col-name">title</span><span class="col-type">TEXT</span>
+        </div>
+        <div class="col-row">
+          <span class="col-name">options</span><span class="col-type">TEXT (JSON)</span>
+        </div>
+        <div class="col-row">
+          <span class="col-name">required</span><span class="col-type">INTEGER</span>
+        </div>
+        <div class="col-row">
+          <span class="col-name">image_url</span><span class="col-type">TEXT</span>
+        </div>
+        <div class="col-row">
+          <span class="col-name">order</span><span class="col-type">INTEGER</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-card-header gold">responses · 回答</div>
+      <div class="table-card-body">
+        <div class="col-row">
+          <span class="col-name">id</span><span class="col-type">TEXT</span><span class="col-key key-pk">PK</span>
+        </div>
+        <div class="col-row">
+          <span class="col-name">question_id</span><span class="col-type">TEXT</span><span class="col-key key-fk">FK → questions</span>
+        </div>
+        <div class="col-row">
+          <span class="col-name">survey_id</span><span class="col-type">TEXT</span><span class="col-key key-fk">FK → surveys</span>
+        </div>
+        <div class="col-row">
+          <span class="col-name">submission_id</span><span class="col-type">TEXT</span><span class="col-key key-fk">分组标记</span>
+        </div>
+        <div class="col-row">
+          <span class="col-name">value</span><span class="col-type">TEXT</span>
+        </div>
+        <div class="col-row">
+          <span class="col-name">submitted_at</span><span class="col-type">TEXT (ISO)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px;font-size:0.85rem;color:var(--text2)">
+    <strong style="color:var(--accent)">relation:</strong>
+    surveys <span style="color:var(--accent)">1 ── N</span> questions <span style="color:var(--accent)">1 ── N</span> responses
+    &nbsp;·&nbsp;
+    responses 冗余 <code>survey_id</code> 避免多次 JOIN
+    &nbsp;·&nbsp;
+    同一 <code>submission_id</code> 的多行 = 同一个人的一次提交
+  </div>
+</div>
+
+<!-- ====== 项目文件结构 ====== -->
+<div class="section">
+  <h2 class="section-title gold">项目文件结构</h2>
+  <div class="two-col">
+    <div class="card">
+      <h3 style="font-size:0.9rem;margin-bottom:8px;color:var(--accent)">数据访问层 <code style="font-weight:400">src/lib/db/</code></h3>
+      <ul style="list-style:none;font-size:0.82rem;color:var(--text2);line-height:2">
+        <li>📄 <code>db.ts</code> — 建表 + Schema Migration</li>
+        <li>📄 <code>surveys.ts</code> — 问卷 CRUD</li>
+        <li>📄 <code>questions.ts</code> — 题目 CRUD + JSON 解析</li>
+        <li>📄 <code>responses.ts</code> — 提交/统计/导出/删除</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="font-size:0.9rem;margin-bottom:8px;color:var(--green)">API 层 <code style="font-weight:400">src/app/api/</code></h3>
+      <ul style="list-style:none;font-size:0.82rem;color:var(--text2);line-height:2">
+        <li>🔌 <code>admin/surveys/</code> — 问卷 CRUD API</li>
+        <li>🔌 <code>admin/.../responses/</code> — 回答查询/删除</li>
+        <li>🔌 <code>admin/.../stats/</code> — 统计汇总</li>
+        <li>🔌 <code>admin/.../export/</code> — Excel 下载</li>
+        <li>🔌 <code>admin/upload/</code> — 图片上传</li>
+        <li>🔌 <code>admin/login/</code> — 管理登录</li>
+        <li>🔌 <code>s/[surveyId]/</code> — 公开：问卷+题目</li>
+        <li>🔌 <code>s/.../submit/</code> — 公开：单题提交</li>
+        <li>🔌 <code>s/.../submit-all/</code> — 公开：批量提交</li>
+      </ul>
+    </div>
+  </div>
+  <div class="two-col" style="margin-top:16px">
+    <div class="card">
+      <h3 style="font-size:0.9rem;margin-bottom:8px;color:var(--gold)">展示层 <code style="font-weight:400">src/app/</code></h3>
+      <ul style="list-style:none;font-size:0.82rem;color:var(--text2);line-height:2">
+        <li>🖥 <code>admin/</code> — 问卷列表 · 仪表盘</li>
+        <li>🖥 <code>admin/surveys/new/</code> — 创建问卷</li>
+        <li>🖥 <code>admin/surveys/[id]/</code> — 数据统计 + 透视表</li>
+        <li>🖥 <code>admin/surveys/[id]/edit/</code> — 编辑问卷</li>
+        <li>🖥 <code>admin/surveys/[id]/qrcode/</code> — QR 码展示</li>
+        <li>🖥 <code>admin/login/</code> — 管理登录页</li>
+        <li>📱 <code>s/[surveyId]/</code> — 多步逐题作答</li>
+        <li>📱 <code>s/.../[questionId]/</code> — 单题作答</li>
+        <li>📱 <code>s/.../.../done/</code> — 提交成功页</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="font-size:0.9rem;margin-bottom:8px;color:#8B7E6A">共享组件 <code style="font-weight:400">src/components/</code></h3>
+      <ul style="list-style:none;font-size:0.82rem;color:var(--text2);line-height:2">
+        <li>🧩 <code>question-editor.tsx</code> — 管理端题目编辑器</li>
+        <li>🧩 <code>question-form.tsx</code> — 受访端答题表单</li>
+        <li>🧩 <code>qrcode-card.tsx</code> — 二维码生成/下载</li>
+        <li>🧩 <code>responses-table.tsx</code> — 回答数据表</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ====== API 路由表 ====== -->
+<div class="section">
+  <h2 class="section-title red">API 路由总览</h2>
+
+  <h3 style="font-size:0.9rem;margin:16px 0 8px;color:var(--accent)">管理端 API</h3>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="routes" style="width:100%">
+      <thead>
+        <tr><th>方法</th><th>路由</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="method m-get">GET</span></td><td><code>/api/admin/surveys</code></td><td>问卷列表（含题目数/回答数）</td></tr>
+        <tr><td><span class="method m-post">POST</span></td><td><code>/api/admin/surveys</code></td><td>创建问卷 + 批量添加题目</td></tr>
+        <tr><td><span class="method m-get">GET</span></td><td><code>/api/admin/surveys/[id]</code></td><td>问卷详情（含题目列表）</td></tr>
+        <tr><td><span class="method m-put">PUT</span></td><td><code>/api/admin/surveys/[id]</code></td><td>更新问卷 + 替换所有题目</td></tr>
+        <tr><td><span class="method m-del">DEL</span></td><td><code>/api/admin/surveys/[id]</code></td><td>删除问卷（级联删除题目和回答）</td></tr>
+        <tr><td><span class="method m-get">GET</span></td><td><code>/api/admin/surveys/[id]/responses</code></td><td>按人分组的提交数据（透视表）</td></tr>
+        <tr><td><span class="method m-del">DEL</span></td><td><code>/api/admin/surveys/[id]/responses</code></td><td>删除单条/清空全部回答</td></tr>
+        <tr><td><span class="method m-get">GET</span></td><td><code>/api/admin/surveys/[id]/stats</code></td><td>每题统计汇总（柱状图数据）</td></tr>
+        <tr><td><span class="method m-get">GET</span></td><td><code>/api/admin/surveys/[id]/export</code></td><td>下载 Excel 文件</td></tr>
+        <tr><td><span class="method m-post">POST</span></td><td><code>/api/admin/upload</code></td><td>上传题目图片</td></tr>
+        <tr><td><span class="method m-post">POST</span></td><td><code>/api/admin/login</code></td><td>管理后台登录</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="font-size:0.9rem;margin:24px 0 8px;color:var(--green)">公开 API（无需认证）</h3>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="routes" style="width:100%">
+      <thead>
+        <tr><th>方法</th><th>路由</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="method m-get">GET</span></td><td><code>/api/s/[surveyId]</code></td><td>问卷 + 全部题目（多步流用）</td></tr>
+        <tr><td><span class="method m-post">POST</span></td><td><code>/api/s/[surveyId]/submit-all</code></td><td>批量提交所有答案</td></tr>
+        <tr><td><span class="method m-get">GET</span></td><td><code>/api/s/[surveyId]/[questionId]</code></td><td>单题详情（单题流用）</td></tr>
+        <tr><td><span class="method m-post">POST</span></td><td><code>/api/s/.../.../submit</code></td><td>提交单题答案</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ====== 核心交互流 ====== -->
+<div class="section">
+  <h2 class="section-title green">两种答题流程</h2>
+
+  <div class="card" style="margin-bottom:20px">
+    <h3 style="font-size:0.95rem;color:var(--accent);margin-bottom:12px">模式 A：多步逐题作答 <span class="badge badge-red">主要流程</span></h3>
+    <div class="flow">
+      <div class="flow-step box-green">📱 扫码<br><small>/s/:surveyId</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-gray">第 1/N 题<br><small>进度条 + 标题+描述</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-gray">填答案<br><small>基于类型渲染控件</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-gray">下一题<br><small>本地验证必填</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-gray">最后一题<br><small>按钮变"提交"</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-gold">批量提交<br><small>同一 submission_id</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-green">✅ 成功<br><small>自动跳转</small></div>
+    </div>
+    <p style="font-size:0.8rem;color:var(--muted);margin-top:12px">
+      <strong>状态管理：</strong>答案存在 <code>useState&lt;Record&gt;</code> 中，最后一步才发网络请求。刷新页面会丢失进度。
+    </p>
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:0.95rem;color:var(--green);margin-bottom:12px">模式 B：单题即答即走 <span class="badge badge-green">原始设计</span></h3>
+    <div class="flow">
+      <div class="flow-step box-green">📱 扫码<br><small>/s/:id/:qid</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-gray">看到一道题<br><small>含图片/题型标记</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-gray">作答</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-gold">提交<br><small>POST submit</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-green">✅ 成功<br><small>自动跳转</small></div>
+    </div>
+    <p style="font-size:0.8rem;color:var(--muted);margin-top:12px">
+      适合现场每题贴一张独立二维码的场景。目前 QR 码页面生成的是多步流的问卷码。
+    </p>
+  </div>
+</div>
+
+<!-- ====== 管理后台流程 ====== -->
+<div class="section">
+  <h2 class="section-title red">管理后台完整流程</h2>
+
+  <div class="card">
+    <div class="flow" style="justify-content:flex-start;gap:10px;flex-wrap:wrap">
+      <div class="flow-step box-gray">🔐 登录<br><small>/admin/login</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-red">📋 问卷列表<br><small>/admin</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-gray">➕ 创建问卷<br><small>+ 批量加题</small></div>
+      <span class="flow-arrow">|</span>
+      <div class="flow-step box-green">📊 数据查看<br><small>统计 + 透视表</small></div>
+      <span class="flow-arrow">|</span>
+      <div class="flow-step box-gold">📱 QR 码<br><small>展示/下载</small></div>
+      <span class="flow-arrow">|</span>
+      <div class="flow-step box-brown">📝 编辑<br><small>修改题目</small></div>
+    </div>
+  </div>
+
+  <h3 style="font-size:0.9rem;margin:24px 0 8px;color:var(--text2)">数据页加载流程</h3>
+  <div class="code-block">
+<span class="cm">// src/app/admin/surveys/[id]/page.tsx — useEffect 内并行请求</span>
+<span class="fn">Promise.all</span>([
+  <span class="fn">fetch</span>(<span class="str">`/api/admin/surveys/${id}`</span>),      <span class="cm">// → 问卷信息 + 题目列表</span>
+  <span class="fn">fetch</span>(<span class="str">`/api/admin/surveys/${id}/stats`</span>), <span class="cm">// → 每题统计 {total, values: {A:n, B:m}}</span>
+  <span class="fn">fetch</span>(<span class="str">`/api/admin/surveys/${id}/responses`</span>), <span class="cm">// → 每人一行的透视数据</span>
+])
+  .<span class="fn">then</span>(([survey, stats, subs]) => {
+    <span class="cm">// 三个 setState → React 渲染统计柱状图 + 透视表</span>
+  });
+  </div>
+</div>
+
+<!-- ====== 密码保护 ====== -->
+<div class="section">
+  <h2 class="section-title gold">密码保护机制</h2>
+  <div class="card">
+    <div class="flow" style="justify-content:flex-start;gap:6px;flex-wrap:wrap">
+      <div class="flow-step box-gray" style="font-size:0.78rem">浏览器访问<br>/admin</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-gold" style="font-size:0.78rem">middleware.ts<br>读 admin_token cookie</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-red" style="font-size:0.78rem">不匹配？<br>302 → /admin/login</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-gray" style="font-size:0.78rem">输入密码<br>POST /api/admin/login</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-green" style="font-size:0.78rem">正确！<br>Set-Cookie ×2</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step box-gray" style="font-size:0.78rem">302 跳回<br>原始页面</div>
+    </div>
+    <table style="width:100%;margin-top:16px;font-size:0.82rem">
+      <tr style="color:var(--text2)">
+        <td style="padding:6px 12px"><code>admin_token</code></td>
+        <td style="padding:6px 12px">httpOnly ✓</td>
+        <td style="padding:6px 12px">SameSite=Lax</td>
+        <td style="padding:6px 12px">7天过期</td>
+        <td style="padding:6px 12px;color:var(--muted)">middleware 校验用，前端不可读</td>
+      </tr>
+      <tr style="color:var(--text2)">
+        <td style="padding:6px 12px"><code>admin_logged_in</code></td>
+        <td style="padding:6px 12px">httpOnly ✗</td>
+        <td style="padding:6px 12px">SameSite=Lax</td>
+        <td style="padding:6px 12px">7天过期</td>
+        <td style="padding:6px 12px;color:var(--muted)">前端判断已登录，避免重复跳登录页</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ====== 关键知识点 ====== -->
+<div class="section">
+  <h2 class="section-title">关键技术知识点</h2>
+
+  <div class="two-col">
+    <div class="card">
+      <h3 style="font-size:0.9rem;margin-bottom:8px;color:var(--accent)">Next.js App Router</h3>
+      <ul style="font-size:0.82rem;color:var(--text2);padding-left:18px;line-height:1.8">
+        <li><code>page.tsx</code> = 页面，<code>route.ts</code> = API</li>
+        <li><code>layout.tsx</code> 包裹子页面（共享布局）</li>
+        <li><code>[id]</code> 文件夹 = 动态路由段</li>
+        <li><code>"use client"</code> 标记客户端组件</li>
+        <li>服务端组件可直接 import DB 模块</li>
+        <li><code>params</code> 是 <code>Promise</code>，需 <code>await</code></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:0.9rem;margin-bottom:8px;color:var(--green)">better-sqlite3</h3>
+      <ul style="font-size:0.82rem;color:var(--text2);padding-left:18px;line-height:1.8">
+        <li><strong>同步 API</strong> — 无需 async/await</li>
+        <li>比异步 sqlite3 快 2-5×</li>
+        <li><code>.prepare(sql).run(...)</code> — 写操作</li>
+        <li><code>.prepare(sql).get(...)</code> — 单行查询</li>
+        <li><code>.prepare(sql).all(...)</code> — 多行查询</li>
+        <li>WAL 模式：写不阻塞读，高并发友好</li>
+        <li>外键需手动 <code>PRAGMA foreign_keys=ON</code></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:0.9rem;margin-bottom:8px;color:var(--gold)">Middleware 与 Edge</h3>
+      <ul style="font-size:0.82rem;color:var(--text2);padding-left:18px;line-height:1.8">
+        <li>跑在 <strong>Edge Runtime</strong>（类 CF Workers）</li>
+        <li>不能访问 better-sqlite3 / Node API</li>
+        <li>只能做轻量操作：cookie、redirect、rewrite</li>
+        <li><code>config.matcher</code> 限制执行范围</li>
+        <li>httpOnly cookie 防 XSS 窃取</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:0.9rem;margin-bottom:8px;color:#8B7E6A">组件设计模式</h3>
+      <ul style="font-size:0.82rem;color:var(--text2);padding-left:18px;line-height:1.8">
+        <li><strong>受控组件：</strong>QuestionEditor 接收 value+onChange</li>
+        <li><strong>状态提升：</strong>题目数据由页面持有，编辑器无内部状态</li>
+        <li><strong>不可变更新：</strong>onChange 传新数组，不修改原数组</li>
+        <li>问卷编辑页 = 创建页的复用变体（预填数据）</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 统计 ====== -->
+<div class="section">
+  <h2 class="section-title green">项目数据</h2>
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-num">3</div>
+      <div class="stat-label">数据库表</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">10</div>
+      <div class="stat-label">API 端点</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">8</div>
+      <div class="stat-label">路由页面</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">4</div>
+      <div class="stat-label">共享组件</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">4</div>
+      <div class="stat-label">题型支持</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">2</div>
+      <div class="stat-label">答题模式</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  问卷月 · MuGuang · SQLite + Next.js 15 · 数据全程私密
+</div>
+
+</div>
+</body>
+</html>
