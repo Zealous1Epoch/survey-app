@@ -1,5 +1,6 @@
 "use client";
 
+import { ClipboardList } from "lucide-react";
 import type { ResponseRow } from "@/lib/db/responses";
 
 interface Props {
@@ -19,7 +20,7 @@ export default function ResponsesTable({ data, loading }: Props) {
   if (data.length === 0) {
     return (
       <div className="px-6 py-16 text-center">
-        <p className="text-4xl mb-3">&#128203;</p>
+        <ClipboardList size={48} strokeWidth={1} className="mb-4 mx-auto" style={{ color: "var(--text-muted)" }} />
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>
           暂无回答数据
         </p>

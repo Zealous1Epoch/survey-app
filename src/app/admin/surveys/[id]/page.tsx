@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { ClipboardList } from "lucide-react";
 
 interface QuestionInfo {
   id: string;
@@ -83,7 +84,7 @@ export default function SurveyDataPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6 sm:mb-8">
         <a
           href="/admin"
           className="inline-flex items-center gap-1 text-sm transition-colors hover:underline"
@@ -94,28 +95,28 @@ export default function SurveyDataPage() {
           </svg>
           返回列表
         </a>
-        <div className="mt-3 flex items-end justify-between">
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight" style={{ letterSpacing: "-0.02em" }}>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ letterSpacing: "-0.02em" }}>
               {surveyTitle}
             </h1>
             <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
               {submissions.length} 条回答
             </p>
           </div>
-          <div className="flex gap-2">
-            <Link href={`/admin/surveys/${id}/qrcode`} className="btn-secondary" style={{ borderColor: "var(--accent-green)", color: "var(--accent-green)" }}>
+          <div className="flex flex-wrap gap-2">
+            <Link href={`/admin/surveys/${id}/qrcode`} className="btn-secondary text-sm py-2 px-3" style={{ borderColor: "var(--accent-green)", color: "var(--accent-green)" }}>
               二维码
             </Link>
-            <button onClick={handleExport} className="btn-primary">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mr-1.5">
+            <button onClick={handleExport} className="btn-primary text-sm py-2 px-3">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mr-1">
                 <path d="M7 2v7M4 6l3 3 3-3M2 10v1.5a.5.5 0 00.5.5h9a.5.5 0 00.5-.5V10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              导出 Excel
+              导出
             </button>
             {submissions.length > 0 && (
-              <button onClick={handleClearAll} className="btn-danger">
-                清空回答
+              <button onClick={handleClearAll} className="btn-danger text-sm py-2 px-3">
+                清空
               </button>
             )}
           </div>
@@ -199,7 +200,7 @@ export default function SurveyDataPage() {
 
             {submissions.length === 0 ? (
               <div className="px-6 py-16 text-center">
-                <p className="text-4xl mb-3">&#128203;</p>
+                <ClipboardList size={48} strokeWidth={1} className="mb-4 mx-auto" style={{ color: "var(--text-muted)" }} />
                 <p className="text-sm" style={{ color: "var(--text-muted)" }}>暂无回答数据</p>
               </div>
             ) : (

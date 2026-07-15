@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getSession } from "@/lib/sessions";
 
-const PUBLIC_PATHS = ["/admin/login", "/api/admin/login"];
+const PUBLIC_PATHS = [
+  "/admin/login",
+  "/admin/register",
+  "/api/auth/login",
+  "/api/auth/register",
+];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Only handle /admin and /api/admin routes
@@ -11,23 +17,27 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow public paths
+  // Allow public auth paths
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
-  // Allow admin API routes (checked via token below)
-  const password = process.env.ADMIN_PASSWORD;
-  if (!password) return NextResponse.next();
+  // Validate session
+  const token = request.cookies.get("session_token")?.value ?? "";
+  const session = token ? await getSession(token) : null;
 
-  const token = request.cookies.get("admin_token")?.value;
-  if (token !== password) {
+  if (!session) {
     const loginUrl = new URL("/admin/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  // Pass userId to downstream handlers via header
+  const headers = new Headers(request.headers);
+  headers.set("x-user-id", session.userId);
+  headers.set("x-username", session.username);
+
+  return NextResponse.next({ request: { headers } });
 }
 
 export const config = {

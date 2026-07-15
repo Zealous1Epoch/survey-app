@@ -3,7 +3,16 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { v4 as uuid } from "uuid";
 
+function getUserId(req: NextRequest): string | null {
+  return req.headers.get("x-user-id");
+}
+
 export async function POST(req: NextRequest) {
+  const userId = getUserId(req);
+  if (!userId) {
+    return NextResponse.json({ error: "未登录" }, { status: 401 });
+  }
+
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
 

@@ -19,12 +19,20 @@ export function getDb(): Database.Database {
   db.pragma("foreign_keys = ON");
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS surveys (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
       description TEXT DEFAULT '',
       redirect_url TEXT DEFAULT '',
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      owner_id TEXT DEFAULT NULL
     );
 
     CREATE TABLE IF NOT EXISTS questions (
@@ -52,6 +60,7 @@ export function getDb(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_questions_survey ON questions(survey_id);
     CREATE INDEX IF NOT EXISTS idx_responses_survey ON responses(survey_id);
     CREATE INDEX IF NOT EXISTS idx_responses_question ON responses(question_id);
+    CREATE INDEX IF NOT EXISTS idx_surveys_owner ON surveys(owner_id);
   `);
 
   // Migration: add image_url column if missing
@@ -65,6 +74,17 @@ export function getDb(): Database.Database {
   if (!rCols.some((c) => c.name === "submission_id")) {
     db.exec(`ALTER TABLE responses ADD COLUMN submission_id TEXT DEFAULT ''`);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_responses_submission ON responses(submission_id)`);
+  }
+
+  // Migration: add owner_id column if missing (idempotent for SQLite)
+  try {
+    const sCols = db.pragma("table_info(surveys)") as Array<{ name: string }>;
+    if (!sCols.some((c) => c.name === "owner_id")) {
+      db.exec(`ALTER TABLE surveys ADD COLUMN owner_id TEXT DEFAULT NULL`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_surveys_owner ON surveys(owner_id)`);
+    }
+  } catch {
+    // column may already exist
   }
 
   return db;

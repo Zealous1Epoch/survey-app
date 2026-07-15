@@ -23,6 +23,14 @@ export async function POST(
     return NextResponse.json({ error: "请至少回答一题" }, { status: 400 });
   }
 
+  // 验证答案的 questionId 是否属于该问卷
+  const questions = getQuestions(surveyId);
+  const validQuestionIds = new Set(questions.map((q) => q.id));
+  const invalidAnswers = answers.filter((a) => !validQuestionIds.has(a.questionId));
+  if (invalidAnswers.length > 0) {
+    return NextResponse.json({ error: "存在无效的问题 ID" }, { status: 400 });
+  }
+
   const submissionId = submitBulk(surveyId, answers);
 
   return NextResponse.json({

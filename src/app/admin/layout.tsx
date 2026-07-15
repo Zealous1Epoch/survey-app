@@ -1,4 +1,5 @@
 import Link from "next/link";
+import UserMenu from "@/components/user-menu";
 
 export default function AdminLayout({
   children,
@@ -16,6 +17,7 @@ export default function AdminLayout({
           >
             <span style={{ color: "var(--accent)" }}></span> 问卷管理
           </Link>
+          <UserMenu />
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-5 py-8">{children}</main>

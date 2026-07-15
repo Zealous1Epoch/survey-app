@@ -2,6 +2,7 @@
 
 import type { QuestionType, QuestionData } from "@/lib/db/questions";
 import { useRef } from "react";
+import { Plus, X, ImageIcon, ImagePlus } from "lucide-react";
 
 interface Props {
   questions: QuestionData[];
@@ -17,11 +18,17 @@ const typeLabels: Record<QuestionType, string> = {
 
 export default function QuestionEditor({ questions, onChange }: Props) {
   const fileRefs = useRef<Map<number, HTMLInputElement>>(new Map());
+
+  const newQuestion = () => ({ type: "choice" as QuestionType, title: "", options: [""], required: true });
+
   const add = () => {
-    onChange([
-      ...questions,
-      { type: "choice", title: "", options: [""], required: true },
-    ]);
+    onChange([...questions, newQuestion()]);
+  };
+
+  const insertAbove = (i: number) => {
+    const updated = [...questions];
+    updated.splice(i, 0, newQuestion());
+    onChange(updated);
   };
 
   const remove = (i: number) => {
@@ -76,14 +83,12 @@ export default function QuestionEditor({ questions, onChange }: Props) {
 
   return (
     <div>
-      <div className="mb-5 flex items-center justify-between">
-        <h3 className="text-sm font-semibold tracking-wide uppercase" style={{ color: "var(--text-secondary)" }}>
+      <div className="mb-4 sm:mb-5 flex items-center justify-between gap-3">
+        <h3 className="text-xs sm:text-sm font-semibold tracking-wide uppercase" style={{ color: "var(--text-secondary)" }}>
           题目列表
         </h3>
-        <button type="button" onClick={add} className="btn-primary text-sm">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mr-1">
-            <path d="M7 2.5v9M2.5 7h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
+        <button type="button" onClick={add} className="btn-primary text-sm py-2 px-3">
+          <Plus size={14} className="mr-1" />
           添加题目
         </button>
       </div>
@@ -100,17 +105,31 @@ export default function QuestionEditor({ questions, onChange }: Props) {
         {questions.map((q, qi) => (
           <div
             key={qi}
-            className="rounded-lg border p-4 animate-in"
+            className="rounded-lg border p-3 sm:p-4 animate-in"
             style={{
               borderColor: "var(--border)",
               background: "var(--bg-card)",
               animationDelay: `${qi * 0.03}s`,
             }}
           >
+            {/* Insert button above */}
+            <div className="mb-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => insertAbove(qi)}
+                className="flex items-center gap-1 text-xs transition-colors"
+                style={{ color: "var(--accent)" }}
+              >
+                <Plus size={13} />
+                此处插入
+              </button>
+              <span className="flex-1 h-px" style={{ background: "var(--border)" }} />
+            </div>
+
             {/* Row 1: index + type + required + delete */}
-            <div className="mb-3 flex items-center gap-3">
+            <div className="mb-3 flex flex-wrap items-center gap-2 sm:gap-3">
               <span
-                className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold"
                 style={{ background: "var(--bg-subtle)", color: "var(--text-secondary)" }}
               >
                 {qi + 1}
@@ -118,7 +137,7 @@ export default function QuestionEditor({ questions, onChange }: Props) {
               <select
                 value={q.type}
                 onChange={(e) => typeChange(qi, e.target.value as QuestionType)}
-                className="select-field"
+                className="select-field text-sm py-1.5"
               >
                 {Object.entries(typeLabels).map(([val, label]) => (
                   <option key={val} value={val}>{label}</option>
@@ -129,15 +148,16 @@ export default function QuestionEditor({ questions, onChange }: Props) {
                   type="checkbox"
                   checked={q.required !== false}
                   onChange={(e) => update(qi, { required: e.target.checked })}
-                  className="h-3.5 w-3.5 rounded accent-current"
+                  className="h-4 w-4 rounded accent-current"
                 />
                 必填
               </label>
               <button
                 type="button"
                 onClick={() => remove(qi)}
-                className="btn-danger ml-auto text-xs"
+                className="btn-danger text-xs py-1.5 px-3 ml-auto flex items-center gap-1"
               >
+                <X size={12} />
                 删除
               </button>
             </div>
@@ -148,7 +168,7 @@ export default function QuestionEditor({ questions, onChange }: Props) {
               value={q.title}
               onChange={(e) => update(qi, { title: e.target.value })}
               placeholder="输入题目内容..."
-              className="input-field mb-3"
+              className="input-field mb-3 text-base"
             />
 
             {/* Options for choice/multi */}
@@ -157,7 +177,7 @@ export default function QuestionEditor({ questions, onChange }: Props) {
                 {(q.options ?? []).map((opt, oi) => (
                   <div key={oi} className="flex items-center gap-2">
                     <span
-                      className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs font-medium"
+                      className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-medium"
                       style={{ background: "var(--bg-subtle)", color: "var(--text-muted)" }}
                     >
                       {String.fromCharCode(65 + oi)}
@@ -167,29 +187,25 @@ export default function QuestionEditor({ questions, onChange }: Props) {
                       value={opt}
                       onChange={(e) => updateOption(qi, oi, e.target.value)}
                       placeholder={`选项 ${oi + 1}`}
-                      className="input-field flex-1"
+                      className="input-field flex-1 text-sm"
                     />
                     <button
                       type="button"
                       onClick={() => removeOption(qi, oi)}
-                      className="flex-shrink-0 rounded p-1 text-xs transition-colors hover:bg-red-50 hover:text-red-500"
+                      className="flex-shrink-0 rounded p-2 text-xs transition-colors hover:bg-red-50 hover:text-red-500"
                       style={{ color: "var(--text-muted)" }}
                     >
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                        <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                      </svg>
+                      <X size={14} />
                     </button>
                   </div>
                 ))}
                 <button
                   type="button"
                   onClick={() => addOption(qi)}
-                  className="inline-flex items-center gap-1 text-xs font-medium transition-colors"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
                   style={{ color: "var(--accent)" }}
                 >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
+                  <Plus size={13} />
                   添加选项
                 </button>
               </div>
@@ -202,35 +218,29 @@ export default function QuestionEditor({ questions, onChange }: Props) {
                   <img
                     src={q.image_url}
                     alt="题目图片预览"
-                    className="h-20 rounded border object-cover"
+                    className="h-24 sm:h-20 rounded border object-cover"
                     style={{ borderColor: "var(--border)" }}
                   />
                   <button
                     type="button"
                     onClick={() => removeImage(qi)}
-                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full text-white"
+                    className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full text-white"
                     style={{ background: "var(--accent)" }}
                   >
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                      <path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                    </svg>
+                    <X size={12} />
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                   <button
                     type="button"
                     onClick={() => fileRefs.current.get(qi)?.click()}
-                    className="btn-ghost text-xs"
+                    className="btn-ghost text-xs py-2 px-3"
                   >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mr-1">
-                      <rect x="2" y="3" width="10" height="8" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-                      <circle cx="5" cy="6" r="1.5" stroke="currentColor" strokeWidth="1"/>
-                      <path d="M12 9l-3-3-2 2-1-1-4 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    添加图片
+                    <ImagePlus size={14} className="mr-1" />
+                    上传图片
                   </button>
-                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>或</span>
+                  <span className="text-xs hidden sm:inline" style={{ color: "var(--text-muted)" }}>或</span>
                   <input
                     type="text"
                     value=""
@@ -238,8 +248,7 @@ export default function QuestionEditor({ questions, onChange }: Props) {
                       if (e.target.value) update(qi, { image_url: e.target.value });
                     }}
                     placeholder="粘贴图片 URL"
-                    className="input-field flex-1 text-xs"
-                    style={{ padding: "0.25rem 0.5rem" }}
+                    className="input-field flex-1 text-sm py-2"
                   />
                   <input
                     type="file"
@@ -260,11 +269,26 @@ export default function QuestionEditor({ questions, onChange }: Props) {
               type="text"
               value={q.redirect_url ?? ""}
               onChange={(e) => update(qi, { redirect_url: e.target.value })}
-              placeholder="提交后跳转地址（可选，留空使用问卷默认）"
-              className="input-field text-xs"
+              placeholder="提交后跳转地址（可选）"
+              className="input-field text-sm py-2"
             />
           </div>
         ))}
+
+        {/* Insert after last question */}
+        {questions.length > 0 && (
+          <div className="flex items-center gap-2 py-2">
+            <button
+              type="button"
+              onClick={() => insertAbove(questions.length)}
+              className="flex items-center gap-1 mx-auto text-xs transition-colors"
+              style={{ color: "var(--accent)" }}
+            >
+              <Plus size={13} />
+              在末尾添加题目
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

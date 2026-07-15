@@ -49,10 +49,10 @@ export default function NewSurveyPage() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <div className="mb-8">
+    <div className="mx-auto max-w-2xl px-4 sm:px-0">
+      <div className="mb-6 sm:mb-8">
         <LinkBack />
-        <h1 className="mt-2 text-3xl font-bold tracking-tight" style={{ letterSpacing: "-0.02em" }}>
+        <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight" style={{ letterSpacing: "-0.02em" }}>
           创建问卷
         </h1>
       </div>
@@ -108,6 +108,7 @@ export default function NewSurveyPage() {
           type="submit"
           disabled={saving}
           className="btn-primary w-full py-3 text-base"
+          style={{ minHeight: 48 }}
         >
           {saving ? "创建中..." : "创建问卷"}
         </button>

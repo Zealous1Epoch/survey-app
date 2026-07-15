@@ -82,8 +82,8 @@ export default function EditSurveyPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <div className="mb-8">
+    <div className="mx-auto max-w-2xl px-4 sm:px-0">
+      <div className="mb-6 sm:mb-8">
         <a
           href={`/admin/surveys/${id}`}
           className="inline-flex items-center gap-1 text-sm transition-colors hover:underline"
@@ -94,7 +94,7 @@ export default function EditSurveyPage() {
           </svg>
           返回
         </a>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight" style={{ letterSpacing: "-0.02em" }}>
+        <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight" style={{ letterSpacing: "-0.02em" }}>
           编辑问卷
         </h1>
       </div>
@@ -141,7 +141,7 @@ export default function EditSurveyPage() {
           </div>
         )}
 
-        <button type="submit" disabled={saving} className="btn-primary w-full py-3 text-base">
+        <button type="submit" disabled={saving} className="btn-primary w-full py-3 text-base" style={{ minHeight: 48 }}>
           {saving ? "保存中..." : "保存修改"}
         </button>
       </form>
