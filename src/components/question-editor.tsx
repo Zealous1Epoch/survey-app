@@ -100,15 +100,15 @@ export default function QuestionEditor({ questions, onChange }: Props) {
         {questions.map((q, qi) => (
           <div
             key={qi}
-            className="rounded-lg border p-4 animate-in"
+            className="rounded-lg border p-3 sm:p-4 animate-in"
             style={{
               borderColor: "var(--border)",
               background: "var(--bg-card)",
               animationDelay: `${qi * 0.03}s`,
             }}
           >
-            {/* Row 1: index + type + required + delete */}
-            <div className="mb-3 flex items-center gap-3">
+            {/* Row 1: index + type + required + delete — 小屏堆叠 */}
+            <div className="mb-3 flex flex-wrap items-center gap-2 sm:gap-3">
               <span
                 className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold"
                 style={{ background: "var(--bg-subtle)", color: "var(--text-secondary)" }}
@@ -118,7 +118,7 @@ export default function QuestionEditor({ questions, onChange }: Props) {
               <select
                 value={q.type}
                 onChange={(e) => typeChange(qi, e.target.value as QuestionType)}
-                className="select-field"
+                className="select-field text-sm"
               >
                 {Object.entries(typeLabels).map(([val, label]) => (
                   <option key={val} value={val}>{label}</option>
@@ -195,7 +195,7 @@ export default function QuestionEditor({ questions, onChange }: Props) {
               </div>
             )}
 
-            {/* Image section */}
+            {/* Image section — 小屏堆叠 */}
             <div className="mb-3">
               {q.image_url ? (
                 <div className="relative inline-block">
@@ -217,20 +217,32 @@ export default function QuestionEditor({ questions, onChange }: Props) {
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => fileRefs.current.get(qi)?.click()}
-                    className="btn-ghost text-xs"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mr-1">
-                      <rect x="2" y="3" width="10" height="8" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-                      <circle cx="5" cy="6" r="1.5" stroke="currentColor" strokeWidth="1"/>
-                      <path d="M12 9l-3-3-2 2-1-1-4 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    添加图片
-                  </button>
-                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>或</span>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileRefs.current.get(qi)?.click()}
+                      className="btn-ghost text-xs"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mr-1">
+                        <rect x="2" y="3" width="10" height="8" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                        <circle cx="5" cy="6" r="1.5" stroke="currentColor" strokeWidth="1"/>
+                        <path d="M12 9l-3-3-2 2-1-1-4 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      添加图片
+                    </button>
+                    <span className="text-xs hidden sm:inline" style={{ color: "var(--text-muted)" }}>或</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      ref={(el) => setFileRef(qi, el)}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleImageUpload(qi, file);
+                      }}
+                    />
+                  </div>
                   <input
                     type="text"
                     value=""
@@ -239,17 +251,7 @@ export default function QuestionEditor({ questions, onChange }: Props) {
                     }}
                     placeholder="粘贴图片 URL"
                     className="input-field flex-1 text-xs"
-                    style={{ padding: "0.25rem 0.5rem" }}
-                  />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    ref={(el) => setFileRef(qi, el)}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleImageUpload(qi, file);
-                    }}
+                    style={{ padding: "0.4rem 0.5rem" }}
                   />
                 </div>
               )}

@@ -1,8 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["better-sqlite3"],
-  allowedDevOrigins: [".trycloudflare.com"],
+  serverExternalPackages: ["mysql2"],
 };
 
 export default nextConfig;

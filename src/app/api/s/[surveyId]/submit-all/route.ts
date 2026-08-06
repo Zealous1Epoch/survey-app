@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { submitBulk } from "@/lib/db/responses";
 import { getSurvey } from "@/lib/db/surveys";
-import { getQuestions } from "@/lib/db/questions";
 
 export async function POST(
   req: NextRequest,
@@ -9,7 +8,7 @@ export async function POST(
 ) {
   const { surveyId } = await params;
 
-  const survey = getSurvey(surveyId);
+  const survey = await getSurvey(surveyId);
   if (!survey) {
     return NextResponse.json({ error: "问卷不存在" }, { status: 404 });
   }
@@ -23,7 +22,7 @@ export async function POST(
     return NextResponse.json({ error: "请至少回答一题" }, { status: 400 });
   }
 
-  const submissionId = submitBulk(surveyId, answers);
+  const submissionId = await submitBulk(surveyId, answers);
 
   return NextResponse.json({
     success: true,

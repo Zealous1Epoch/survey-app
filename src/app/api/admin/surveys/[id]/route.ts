@@ -17,11 +17,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const survey = getSurvey(id);
+  const survey = await getSurvey(id);
   if (!survey) {
     return NextResponse.json({ error: "问卷不存在" }, { status: 404 });
   }
-  const questions = getQuestions(id).map(sanitizeQuestion);
+  const questions = (await getQuestions(id)).map(sanitizeQuestion);
   return NextResponse.json({ ...survey, questions });
 }
 
@@ -30,7 +30,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const survey = getSurvey(id);
+  const survey = await getSurvey(id);
   if (!survey) {
     return NextResponse.json({ error: "问卷不存在" }, { status: 404 });
   }
@@ -38,28 +38,16 @@ export async function PUT(
   const body = await req.json();
   const { title, description, redirect_url, questions } = body;
 
-  updateSurvey(id, { title, description, redirect_url });
+  await updateSurvey(id, { title, description, redirect_url });
 
   if (questions && Array.isArray(questions)) {
-    deleteQuestionsBySurvey(id);
-    questions.forEach(
-      (
-        q: {
-          id?: string;
-          type: QuestionType;
-          title: string;
-          options?: string[];
-          required?: boolean;
-          redirect_url?: string;
-        },
-        i: number
-      ) => {
-        createQuestion(id, { ...q, order: i });
-      }
-    );
+    await deleteQuestionsBySurvey(id);
+    for (const q of questions) {
+      await createQuestion(id, { ...q, order: q.order ?? 0 });
+    }
   }
 
-  return NextResponse.json(getSurvey(id));
+  return NextResponse.json(await getSurvey(id));
 }
 
 export async function DELETE(
@@ -67,7 +55,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const deleted = deleteSurvey(id);
+  const deleted = await deleteSurvey(id);
   if (!deleted) {
     return NextResponse.json({ error: "问卷不存在" }, { status: 404 });
   }

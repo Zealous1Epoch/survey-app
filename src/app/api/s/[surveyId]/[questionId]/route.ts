@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: Promise<{ surveyId: string; questionId: string }> }
 ) {
   const { questionId } = await params;
-  const question = getQuestion(questionId);
+  const question = await getQuestion(questionId);
   if (!question) {
     return NextResponse.json({ error: "题目不存在" }, { status: 404 });
   }

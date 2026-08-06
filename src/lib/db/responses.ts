@@ -18,65 +18,73 @@ export interface ResponseRow {
   submitted_at: string;
 }
 
-/** Single-response submit (backwards compatible) */
-export function submitResponse(
+/** 单题提交（向后兼容） */
+export async function submitResponse(
   surveyId: string,
   questionId: string,
   value: string,
   submissionId?: string
-): Response {
-  const db = getDb();
+): Promise<Response> {
+  const db = await getDb();
   const id = uuid();
   const now = new Date().toISOString();
-  db.prepare(
-    "INSERT INTO responses (id, question_id, survey_id, submission_id, value, submitted_at) VALUES (?, ?, ?, ?, ?, ?)"
-  ).run(id, questionId, surveyId, submissionId ?? "", value, now);
+  await db.execute(
+    "INSERT INTO responses (id, question_id, survey_id, submission_id, value, submitted_at) VALUES (?, ?, ?, ?, ?, ?)",
+    [id, questionId, surveyId, submissionId ?? "", value, now]
+  );
   return { id, question_id: questionId, survey_id: surveyId, submission_id: submissionId ?? "", value, submitted_at: now };
 }
 
-/** Bulk submit: all answers for one person in one go */
-export function submitBulk(
+/** 批量提交：一个人一次性提交所有答案 */
+export async function submitBulk(
   surveyId: string,
   answers: Array<{ questionId: string; value: string }>
-): string {
-  const db = getDb();
+): Promise<string> {
+  const db = await getDb();
+  const connection = await db.getConnection();
   const submissionId = uuid();
   const now = new Date().toISOString();
 
-  const stmt = db.prepare(
-    "INSERT INTO responses (id, question_id, survey_id, submission_id, value, submitted_at) VALUES (?, ?, ?, ?, ?, ?)"
-  );
-
-  const insertAll = db.transaction(() => {
+  try {
+    await connection.beginTransaction();
     for (const a of answers) {
-      stmt.run(uuid(), a.questionId, surveyId, submissionId, a.value, now);
+      await connection.execute(
+        "INSERT INTO responses (id, question_id, survey_id, submission_id, value, submitted_at) VALUES (?, ?, ?, ?, ?, ?)",
+        [uuid(), a.questionId, surveyId, submissionId, a.value, now]
+      );
     }
-  });
-
-  insertAll();
-  return submissionId;
+    await connection.commit();
+    return submissionId;
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
 }
 
-/** Get all submissions grouped by person (pivot) */
+/** 按人分组的所有提交 */
 export interface SubmissionRow {
   submission_id: string;
   submitted_at: string;
-  answers: Record<string, string>; // question_title -> value
+  answers: Record<string, string>;
 }
 
-export function getSubmissions(surveyId: string): SubmissionRow[] {
-  const db = getDb();
-  const questions = db
-    .prepare("SELECT id, title FROM questions WHERE survey_id = ? ORDER BY \"order\" ASC")
-    .all(surveyId) as Array<{ id: string; title: string }>;
+export async function getSubmissions(surveyId: string): Promise<SubmissionRow[]> {
+  const db = await getDb();
+  const [qRows] = await db.execute(
+    "SELECT id, title FROM questions WHERE survey_id = ? ORDER BY `order` ASC",
+    [surveyId]
+  );
+  const questions = qRows as Array<{ id: string; title: string }>;
 
-  const all = db
-    .prepare(
-      `SELECT r.submission_id, r.question_id, r.value, r.submitted_at
-       FROM responses r WHERE r.survey_id = ? AND r.submission_id != ''
-       ORDER BY r.submitted_at DESC`
-    )
-    .all(surveyId) as Array<{
+  const [all] = await db.execute(
+    `SELECT r.submission_id, r.question_id, r.value, r.submitted_at
+     FROM responses r WHERE r.survey_id = ? AND r.submission_id != ''
+     ORDER BY r.submitted_at DESC`,
+    [surveyId]
+  );
+  const rows = all as Array<{
     submission_id: string;
     question_id: string;
     value: string;
@@ -86,7 +94,7 @@ export function getSubmissions(surveyId: string): SubmissionRow[] {
   const qMap = new Map(questions.map((q) => [q.id, q.title]));
   const grouped = new Map<string, SubmissionRow>();
 
-  for (const row of all) {
+  for (const row of rows) {
     if (!grouped.has(row.submission_id)) {
       grouped.set(row.submission_id, {
         submission_id: row.submission_id,
@@ -101,11 +109,11 @@ export function getSubmissions(surveyId: string): SubmissionRow[] {
   return Array.from(grouped.values());
 }
 
-export function getResponses(
+export async function getResponses(
   surveyId: string,
   questionId?: string
-): ResponseRow[] {
-  const db = getDb();
+): Promise<ResponseRow[]> {
+  const db = await getDb();
   let sql = `
     SELECT r.id, q.title as question_title, q.type as question_type, r.value, r.submitted_at
     FROM responses r
@@ -120,24 +128,25 @@ export function getResponses(
   }
 
   sql += " ORDER BY r.submitted_at DESC";
-  return db.prepare(sql).all(...params) as ResponseRow[];
+  const [rows] = await db.execute(sql, params);
+  return rows as ResponseRow[];
 }
 
-export function getStats(surveyId: string): Record<
+export async function getStats(surveyId: string): Promise<Record<
   string,
   { total: number; values: Record<string, number> }
-> {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `SELECT q.id, q.title, q.type, q.options, r.value, COUNT(*) as count
-       FROM responses r
-       JOIN questions q ON q.id = r.question_id
-       WHERE r.survey_id = ?
-       GROUP BY q.id, r.value
-       ORDER BY q."order", count DESC`
-    )
-    .all(surveyId) as Array<{
+>> {
+  const db = await getDb();
+  const [rows] = await db.execute(
+    `SELECT q.id, q.title, q.type, q.options, r.value, COUNT(*) as count
+     FROM responses r
+     JOIN questions q ON q.id = r.question_id
+     WHERE r.survey_id = ?
+     GROUP BY q.id, r.value
+     ORDER BY q.\`order\`, count DESC`,
+    [surveyId]
+  );
+  const data = rows as Array<{
     id: string;
     title: string;
     type: string;
@@ -147,7 +156,7 @@ export function getStats(surveyId: string): Record<
   }>;
 
   const stats: Record<string, { total: number; values: Record<string, number> }> = {};
-  for (const row of rows) {
+  for (const row of data) {
     if (!stats[row.id]) {
       stats[row.id] = { total: 0, values: {} };
     }
@@ -157,30 +166,36 @@ export function getStats(surveyId: string): Record<
   return stats;
 }
 
-export function deleteSubmission(surveyId: string, submissionId: string): boolean {
-  const db = getDb();
-  const result = db
-    .prepare("DELETE FROM responses WHERE survey_id = ? AND submission_id = ?")
-    .run(surveyId, submissionId);
-  return result.changes > 0;
+export async function deleteSubmission(surveyId: string, submissionId: string): Promise<boolean> {
+  const db = await getDb();
+  const [result] = await db.execute(
+    "DELETE FROM responses WHERE survey_id = ? AND submission_id = ?",
+    [surveyId, submissionId]
+  );
+  return (result as any).affectedRows > 0;
 }
 
-export function clearResponses(surveyId: string): boolean {
-  const db = getDb();
-  const result = db.prepare("DELETE FROM responses WHERE survey_id = ?").run(surveyId);
-  return result.changes > 0;
+export async function clearResponses(surveyId: string): Promise<boolean> {
+  const db = await getDb();
+  const [result] = await db.execute(
+    "DELETE FROM responses WHERE survey_id = ?",
+    [surveyId]
+  );
+  return (result as any).affectedRows > 0;
 }
 
-/** Export: one row per person, columns = questions + submission time */
-export function getExportRows(
+/** 导出：每人一行，列 = 题目 + 提交时间 */
+export async function getExportRows(
   surveyId: string
-): Array<Record<string, string>> {
-  const db = getDb();
-  const questions = db
-    .prepare("SELECT * FROM questions WHERE survey_id = ? ORDER BY \"order\" ASC")
-    .all(surveyId) as Array<{ id: string; title: string }>;
+): Promise<Array<Record<string, string>>> {
+  const db = await getDb();
+  const [qRows] = await db.execute(
+    "SELECT * FROM questions WHERE survey_id = ? ORDER BY `order` ASC",
+    [surveyId]
+  );
+  const questions = qRows as Array<{ id: string; title: string }>;
 
-  const submissions = getSubmissions(surveyId);
+  const submissions = await getSubmissions(surveyId);
 
   return submissions.map((sub) => {
     const row: Record<string, string> = {
@@ -193,4 +208,3 @@ export function getExportRows(
     return row;
   });
 }
-

@@ -12,9 +12,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "密码错误" }, { status: 401 });
   }
 
+  // HTTP 环境下 secure 必须为 false，否则浏览器会拒绝 Secure Cookie
   const cookieOpts = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: false,
     sameSite: "lax" as const,
     maxAge: 60 * 60 * 24 * 7,
     path: "/",

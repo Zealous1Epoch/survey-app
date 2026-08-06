@@ -94,27 +94,27 @@ export default function SurveyDataPage() {
           </svg>
           返回列表
         </a>
-        <div className="mt-3 flex items-end justify-between">
+        <div className="mt-3 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight" style={{ letterSpacing: "-0.02em" }}>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ letterSpacing: "-0.02em" }}>
               {surveyTitle}
             </h1>
             <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
               {submissions.length} 条回答
             </p>
           </div>
-          <div className="flex gap-2">
-            <Link href={`/admin/surveys/${id}/qrcode`} className="btn-secondary" style={{ borderColor: "var(--accent-green)", color: "var(--accent-green)" }}>
+          <div className="flex flex-wrap gap-2">
+            <Link href={`/admin/surveys/${id}/qrcode`} className="btn-secondary text-xs sm:text-sm px-3 sm:px-4 py-2" style={{ borderColor: "var(--accent-green)", color: "var(--accent-green)" }}>
               二维码
             </Link>
-            <button onClick={handleExport} className="btn-primary">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mr-1.5">
+            <button onClick={handleExport} className="btn-primary text-xs sm:text-sm px-3 sm:px-4 py-2">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mr-1 sm:mr-1.5">
                 <path d="M7 2v7M4 6l3 3 3-3M2 10v1.5a.5.5 0 00.5.5h9a.5.5 0 00.5-.5V10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
               导出 Excel
             </button>
             {submissions.length > 0 && (
-              <button onClick={handleClearAll} className="btn-danger">
+              <button onClick={handleClearAll} className="btn-danger text-xs sm:text-sm px-3 sm:px-4">
                 清空回答
               </button>
             )}
@@ -134,21 +134,21 @@ export default function SurveyDataPage() {
               <button
                 key={q.id}
                 onClick={() => setActiveQ(q.id)}
-                className="flex-shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all"
+                className="flex-shrink-0 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-all"
                 style={
                   activeQ === q.id
                     ? { background: "var(--text-primary)", color: "white" }
                     : { background: "var(--bg-subtle)", color: "var(--text-secondary)" }
                 }
               >
-                {q.title.length > 16 ? q.title.slice(0, 16) + "..." : q.title}
+                {q.title.length > 12 ? q.title.slice(0, 12) + "..." : q.title}
               </button>
             ))}
           </div>
 
           {/* Active question stats */}
           {activeStats && (
-            <div className="card">
+            <div className="card" style={{ padding: "1.5rem" }}>
               <div className="mb-4 flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full" style={{ background: "var(--accent)" }} />
                 <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
@@ -203,12 +203,12 @@ export default function SurveyDataPage() {
                 <p className="text-sm" style={{ color: "var(--text-muted)" }}>暂无回答数据</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
+              <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
+                <table className="w-full text-left text-xs sm:text-sm">
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--border)" }}>
                       <th
-                        className="px-5 py-3 text-xs font-medium tracking-wide uppercase sticky left-0 z-10"
+                        className="px-3 sm:px-5 py-3 text-xs font-medium tracking-wide uppercase sticky left-0 z-10"
                         style={{ color: "var(--text-muted)", background: "var(--bg-card)" }}
                       >
                         #
@@ -216,16 +216,16 @@ export default function SurveyDataPage() {
                       {questions.map((q) => (
                         <th
                           key={q.id}
-                          className="px-4 py-3 text-xs font-medium tracking-wide uppercase whitespace-nowrap"
-                          style={{ color: "var(--text-muted)", minWidth: 120 }}
+                          className="px-2 sm:px-4 py-3 text-xs font-medium tracking-wide uppercase whitespace-nowrap"
+                          style={{ color: "var(--text-muted)", minWidth: 100 }}
                         >
-                          {q.title.length > 12 ? q.title.slice(0, 12) + "..." : q.title}
+                          {q.title.length > 8 ? q.title.slice(0, 8) + "..." : q.title}
                         </th>
                       ))}
-                      <th className="px-4 py-3 text-xs font-medium tracking-wide uppercase whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
+                      <th className="px-2 sm:px-4 py-3 text-xs font-medium tracking-wide uppercase whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
                         提交时间
                       </th>
-                      <th className="px-4 py-3 text-xs font-medium tracking-wide uppercase whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
+                      <th className="px-2 sm:px-4 py-3 text-xs font-medium tracking-wide uppercase whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
                         操作
                       </th>
                     </tr>
@@ -241,19 +241,19 @@ export default function SurveyDataPage() {
                         }}
                       >
                         <td
-                          className="px-5 py-3 font-medium sticky left-0 z-10"
+                          className="px-3 sm:px-5 py-3 font-medium sticky left-0 z-10"
                           style={{ color: "var(--text-muted)", background: "var(--bg-card)" }}
                         >
                           {i + 1}
                         </td>
                         {questions.map((q) => (
-                          <td key={q.id} className="px-4 py-3 whitespace-nowrap">
+                          <td key={q.id} className="px-2 sm:px-4 py-3 whitespace-nowrap">
                             {sub.answers[q.title] ?? (
                               <span style={{ color: "var(--text-muted)" }}>-</span>
                             )}
                           </td>
                         ))}
-                        <td className="px-4 py-3 whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>
+                        <td className="px-2 sm:px-4 py-3 whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>
                           {new Date(sub.submitted_at).toLocaleString("zh-CN", {
                             month: "short",
                             day: "numeric",
@@ -261,7 +261,7 @@ export default function SurveyDataPage() {
                             minute: "2-digit",
                           })}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
+                        <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
                           <button
                             onClick={() => handleDeleteSubmission(sub.submission_id)}
                             className="text-xs transition-colors hover:text-red-500"

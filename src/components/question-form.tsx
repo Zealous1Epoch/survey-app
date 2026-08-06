@@ -92,10 +92,10 @@ export default function QuestionForm({ question, surveyId, onSubmit }: Props) {
             />
           </svg>
         </div>
-        <h2 className="mb-2 text-xl font-semibold" style={{ color: "var(--text-primary)" }}>
+        <h2 className="mb-2 text-lg sm:text-xl font-semibold" style={{ color: "var(--text-primary)" }}>
           提交成功
         </h2>
-        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+        <p className="text-xs sm:text-sm" style={{ color: "var(--text-secondary)" }}>
           感谢你的回答
         </p>
       </div>
@@ -107,7 +107,7 @@ export default function QuestionForm({ question, surveyId, onSubmit }: Props) {
       {/* Question type badge */}
       <div className="mb-4">
         <span
-          className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
+          className="inline-flex items-center rounded-full px-2.5 sm:px-3 py-0.5 sm:py-1 text-xs font-medium"
           style={{
             background: `${indicator.color}12`,
             color: indicator.color,
@@ -117,8 +117,8 @@ export default function QuestionForm({ question, surveyId, onSubmit }: Props) {
         </span>
       </div>
 
-      {/* Question title */}
-      <h2 className="mb-8 text-lg font-medium leading-relaxed" style={{ color: "var(--text-primary)" }}>
+      {/* Question title — 小屏缩小字体 */}
+      <h2 className="mb-6 sm:mb-8 text-base sm:text-lg font-medium leading-relaxed" style={{ color: "var(--text-primary)" }}>
         {question.title}
       </h2>
 
@@ -128,7 +128,7 @@ export default function QuestionForm({ question, surveyId, onSubmit }: Props) {
           {question.options.map((opt, i) => (
             <label
               key={i}
-              className="flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3.5 transition-all"
+              className="flex cursor-pointer items-center gap-3 rounded-lg border px-3 sm:px-4 py-3 sm:py-3.5 transition-all"
               style={{
                 borderColor: value === opt ? "var(--accent)" : "var(--border)",
                 background: value === opt ? "var(--accent-light)" : "var(--bg-card)",
@@ -159,7 +159,7 @@ export default function QuestionForm({ question, surveyId, onSubmit }: Props) {
             return (
               <label
                 key={i}
-                className="flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3.5 transition-all"
+                className="flex cursor-pointer items-center gap-3 rounded-lg border px-3 sm:px-4 py-3 sm:py-3.5 transition-all"
                 style={{
                   borderColor: checked ? "var(--accent-green)" : "var(--border)",
                   background: checked ? "var(--accent-green-light)" : "var(--bg-card)",
@@ -200,7 +200,7 @@ export default function QuestionForm({ question, surveyId, onSubmit }: Props) {
       {/* Rating */}
       {question.type === "rating" && (
         <div className="text-center">
-          <div className="inline-flex items-center gap-2">
+          <div className="inline-flex items-center gap-1 sm:gap-2">
             {[1, 2, 3, 4, 5].map((star) => {
               const active = Number(value) >= star;
               return (
@@ -210,7 +210,7 @@ export default function QuestionForm({ question, surveyId, onSubmit }: Props) {
                   onClick={() => setValue(String(star))}
                   className="transition-all duration-150 hover:scale-110"
                   style={{
-                    fontSize: "2.5rem",
+                    fontSize: "2rem",
                     color: active ? "#C8A45A" : "var(--border)",
                     transform: active ? "scale(1.1)" : "scale(1)",
                   }}

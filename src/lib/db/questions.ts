@@ -26,39 +26,45 @@ export interface QuestionData {
   order?: number;
 }
 
-export function getQuestions(surveyId: string): Question[] {
-  const db = getDb();
-  return db
-    .prepare("SELECT * FROM questions WHERE survey_id = ? ORDER BY \"order\" ASC")
-    .all(surveyId) as Question[];
+export async function getQuestions(surveyId: string): Promise<Question[]> {
+  const db = await getDb();
+  const [rows] = await db.execute(
+    "SELECT * FROM questions WHERE survey_id = ? ORDER BY `order` ASC",
+    [surveyId]
+  );
+  return rows as Question[];
 }
 
-export function getQuestion(id: string): Question | null {
-  const db = getDb();
-  return (db
-    .prepare("SELECT * FROM questions WHERE id = ?")
-    .get(id) as Question) ?? null;
+export async function getQuestion(id: string): Promise<Question | null> {
+  const db = await getDb();
+  const [rows] = await db.execute(
+    "SELECT * FROM questions WHERE id = ?",
+    [id]
+  );
+  const list = rows as Question[];
+  return list.length > 0 ? list[0] : null;
 }
 
-export function createQuestion(
+export async function createQuestion(
   surveyId: string,
   data: QuestionData
-): Question {
-  const db = getDb();
+): Promise<Question> {
+  const db = await getDb();
   const id = data.id ?? uuid();
-  db.prepare(
-    `INSERT INTO questions (id, survey_id, type, title, options, required, redirect_url, image_url, "order")
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(
-    id,
-    surveyId,
-    data.type,
-    data.title,
-    JSON.stringify(data.options ?? []),
-    data.required !== false ? 1 : 0,
-    data.redirect_url ?? "",
-    data.image_url ?? "",
-    data.order ?? 0
+  await db.execute(
+    `INSERT INTO questions (id, survey_id, type, title, options, required, redirect_url, image_url, \`order\`)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      surveyId,
+      data.type,
+      data.title,
+      JSON.stringify(data.options ?? []),
+      data.required !== false ? 1 : 0,
+      data.redirect_url ?? "",
+      data.image_url ?? "",
+      data.order ?? 0,
+    ]
   );
   return {
     id,
@@ -73,11 +79,11 @@ export function createQuestion(
   };
 }
 
-export function updateQuestion(
+export async function updateQuestion(
   id: string,
   data: Partial<QuestionData>
-): boolean {
-  const db = getDb();
+): Promise<boolean> {
+  const db = await getDb();
   const fields: string[] = [];
   const values: (string | number)[] = [];
 
@@ -87,26 +93,27 @@ export function updateQuestion(
   if (data.required !== undefined) { fields.push("required = ?"); values.push(data.required ? 1 : 0); }
   if (data.redirect_url !== undefined) { fields.push("redirect_url = ?"); values.push(data.redirect_url); }
   if (data.image_url !== undefined) { fields.push("image_url = ?"); values.push(data.image_url); }
-  if (data.order !== undefined) { fields.push("\"order\" = ?"); values.push(data.order); }
+  if (data.order !== undefined) { fields.push("`order` = ?"); values.push(data.order); }
 
   if (fields.length === 0) return false;
 
   values.push(id);
-  const result = db
-    .prepare(`UPDATE questions SET ${fields.join(", ")} WHERE id = ?`)
-    .run(...(values as [string | number, ...(string | number)[]]));
-  return result.changes > 0;
+  const [result] = await db.query(
+    `UPDATE questions SET ${fields.join(", ")} WHERE id = ?`,
+    values
+  );
+  return (result as any).affectedRows > 0;
 }
 
-export function deleteQuestion(id: string): boolean {
-  const db = getDb();
-  const result = db.prepare("DELETE FROM questions WHERE id = ?").run(id);
-  return result.changes > 0;
+export async function deleteQuestion(id: string): Promise<boolean> {
+  const db = await getDb();
+  const [result] = await db.execute("DELETE FROM questions WHERE id = ?", [id]);
+  return (result as any).affectedRows > 0;
 }
 
-export function deleteQuestionsBySurvey(surveyId: string): void {
-  const db = getDb();
-  db.prepare("DELETE FROM questions WHERE survey_id = ?").run(surveyId);
+export async function deleteQuestionsBySurvey(surveyId: string): Promise<void> {
+  const db = await getDb();
+  await db.execute("DELETE FROM questions WHERE survey_id = ?", [surveyId]);
 }
 
 export function sanitizeQuestion(q: Question) {

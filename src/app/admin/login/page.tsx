@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function AdminLoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // If already logged in (has companion cookie), redirect
+  // 如果已登录，直接跳转
   useEffect(() => {
     if (document.cookie.includes("admin_logged_in")) {
       const redirect = searchParams.get("redirect") ?? "/admin";
@@ -72,5 +72,13 @@ export default function AdminLoginPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><p className="text-sm" style={{ color: "var(--text-secondary)" }}>加载中...</p></div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

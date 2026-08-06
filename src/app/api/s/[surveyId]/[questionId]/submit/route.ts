@@ -9,12 +9,12 @@ export async function POST(
 ) {
   const { surveyId, questionId } = await params;
 
-  const question = getQuestion(questionId);
+  const question = await getQuestion(questionId);
   if (!question) {
     return NextResponse.json({ error: "题目不存在" }, { status: 404 });
   }
 
-  const survey = getSurvey(surveyId);
+  const survey = await getSurvey(surveyId);
   if (!survey) {
     return NextResponse.json({ error: "问卷不存在" }, { status: 404 });
   }
@@ -28,7 +28,7 @@ export async function POST(
     }
   }
 
-  const response = submitResponse(surveyId, questionId, String(value ?? ""));
+  const response = await submitResponse(surveyId, questionId, String(value ?? ""));
 
   const redirectUrl = question.redirect_url || survey.redirect_url || "";
 

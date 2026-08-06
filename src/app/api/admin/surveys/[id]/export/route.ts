@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const rows = getExportRows(id);
+  const rows = await getExportRows(id);
 
   if (rows.length === 0) {
     const wb = new ExcelJS.Workbook();

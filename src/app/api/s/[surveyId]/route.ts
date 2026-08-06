@@ -7,12 +7,12 @@ export async function GET(
   { params }: { params: Promise<{ surveyId: string }> }
 ) {
   const { surveyId } = await params;
-  const survey = getSurvey(surveyId);
+  const survey = await getSurvey(surveyId);
   if (!survey) {
     return NextResponse.json({ error: "问卷不存在" }, { status: 404 });
   }
 
-  const questions = getQuestions(surveyId).map(sanitizeQuestion);
+  const questions = (await getQuestions(surveyId)).map(sanitizeQuestion);
   return NextResponse.json({
     ...survey,
     questions,

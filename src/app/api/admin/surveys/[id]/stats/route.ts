@@ -7,8 +7,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const stats = getStats(id);
-  const questions = getQuestions(id).map(sanitizeQuestion);
+  const stats = await getStats(id);
+  const questions = (await getQuestions(id)).map(sanitizeQuestion);
 
   const enriched = questions.map((q) => ({
     ...q,

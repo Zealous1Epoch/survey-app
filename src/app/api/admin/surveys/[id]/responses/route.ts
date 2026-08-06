@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const submissions = getSubmissions(id);
+  const submissions = await getSubmissions(id);
   return NextResponse.json(submissions);
 }
 
@@ -18,13 +18,13 @@ export async function DELETE(
   const submissionId = req.nextUrl.searchParams.get("submission_id");
 
   if (submissionId) {
-    const ok = deleteSubmission(id, submissionId);
+    const ok = await deleteSubmission(id, submissionId);
     if (!ok) {
       return NextResponse.json({ error: "回答不存在" }, { status: 404 });
     }
     return NextResponse.json({ success: true });
   }
 
-  clearResponses(id);
+  await clearResponses(id);
   return NextResponse.json({ success: true });
 }

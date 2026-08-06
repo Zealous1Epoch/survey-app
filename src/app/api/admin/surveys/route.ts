@@ -3,7 +3,7 @@ import { getSurveys, createSurvey } from "@/lib/db/surveys";
 import { createQuestion, QuestionType } from "@/lib/db/questions";
 
 export async function GET() {
-  const surveys = getSurveys();
+  const surveys = await getSurveys();
   return NextResponse.json(surveys);
 }
 
@@ -15,12 +15,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "标题不能为空" }, { status: 400 });
   }
 
-  const survey = createSurvey({ title: title.trim(), description, redirect_url });
+  const survey = await createSurvey({ title: title.trim(), description, redirect_url });
 
   if (questions && Array.isArray(questions)) {
-    questions.forEach((q: { type: QuestionType; title: string; options?: string[]; required?: boolean; redirect_url?: string }, i: number) => {
-      createQuestion(survey.id, { ...q, order: i });
-    });
+    for (const q of questions) {
+      await createQuestion(survey.id, { ...q, order: q.order ?? 0 });
+    }
   }
 
   return NextResponse.json(survey, { status: 201 });

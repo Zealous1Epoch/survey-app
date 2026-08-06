@@ -32,15 +32,16 @@ export default function AdminPage() {
           <p className="mb-1 text-xs font-medium tracking-widest uppercase" style={{ color: "var(--text-muted)" }}>
             Surveys
           </p>
-          <h1 className="text-3xl font-bold tracking-tight" style={{ letterSpacing: "-0.02em" }}>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ letterSpacing: "-0.02em" }}>
             问卷列表
           </h1>
         </div>
-        <Link href="/admin/surveys/new" className="btn-primary">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mr-1.5">
+        <Link href="/admin/surveys/new" className="btn-primary text-sm sm:text-base px-4 sm:px-8">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mr-1 sm:mr-1.5">
             <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
-          创建问卷
+          <span className="hidden sm:inline">创建问卷</span>
+          <span className="sm:hidden">新建</span>
         </Link>
       </div>
 
@@ -68,11 +69,11 @@ export default function AdminPage() {
           {surveys.map((s, i) => (
             <div
               key={s.id}
-              className={`card flex items-center justify-between animate-in animate-in-delay-${i + 1}`}
-              style={{ padding: "1rem 1.5rem" }}
+              className={`card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-in animate-in-delay-${i + 1}`}
+              style={{ padding: "1rem 1.25rem" }}
             >
-              <div className="flex items-center gap-5 min-w-0">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold" style={{ background: "var(--bg-subtle)", color: "var(--text-secondary)" }}>
+              <div className="flex items-center gap-3 sm:gap-5 min-w-0">
+                <div className="flex h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold" style={{ background: "var(--bg-subtle)", color: "var(--text-secondary)" }}>
                   {i + 1}
                 </div>
                 <div className="min-w-0">
@@ -83,20 +84,21 @@ export default function AdminPage() {
                   >
                     {s.title}
                   </Link>
-                  <div className="mt-0.5 flex items-center gap-3 text-xs" style={{ color: "var(--text-muted)" }}>
+                  <div className="mt-0.5 flex items-center gap-2 sm:gap-3 text-xs" style={{ color: "var(--text-muted)" }}>
                     <span>{s.question_count} 题</span>
                     <span>·</span>
                     <span>{s.response_count} 条回答</span>
-                    <span>·</span>
-                    <span>{new Date(s.created_at).toLocaleDateString("zh-CN")}</span>
+                    <span className="hidden sm:inline">·</span>
+                    <span className="hidden sm:inline">{new Date(s.created_at).toLocaleDateString("zh-CN")}</span>
                   </div>
                 </div>
               </div>
-              <div className="flex flex-shrink-0 items-center gap-1">
-                <Link href={`/admin/surveys/${s.id}`} className="btn-ghost">数据</Link>
-                <Link href={`/admin/surveys/${s.id}/qrcode`} className="btn-ghost" style={{ color: "var(--accent-green)" }}>二维码</Link>
-                <Link href={`/admin/surveys/${s.id}/edit`} className="btn-ghost">编辑</Link>
-                <button onClick={() => handleDelete(s.id)} className="btn-danger">删除</button>
+              {/* 操作按钮：大屏横排，小屏自适应 */}
+              <div className="flex flex-shrink-0 items-center gap-1 ml-0 sm:ml-auto">
+                <Link href={`/admin/surveys/${s.id}`} className="btn-ghost text-xs px-2 sm:px-4">数据</Link>
+                <Link href={`/admin/surveys/${s.id}/qrcode`} className="btn-ghost text-xs px-2 sm:px-4" style={{ color: "var(--accent-green)" }}>二维码</Link>
+                <Link href={`/admin/surveys/${s.id}/edit`} className="btn-ghost text-xs px-2 sm:px-4">编辑</Link>
+                <button onClick={() => handleDelete(s.id)} className="btn-danger text-xs px-2 sm:px-4">删除</button>
               </div>
             </div>
           ))}

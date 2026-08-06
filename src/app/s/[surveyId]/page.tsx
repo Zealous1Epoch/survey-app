@@ -166,8 +166,8 @@ export default function SurveyAnswerPage({
   return (
     <div style={{ background: "var(--bg-primary)", minHeight: "100vh" }}>
       {/* Navbar */}
-      <nav className="navbar">
-        <span style={{ fontSize: 20, fontWeight: 700, color: "var(--primary)", letterSpacing: -0.3 }}>
+      <nav className="navbar px-4 sm:px-8">
+        <span style={{ fontSize: 18, fontWeight: 700, color: "var(--primary)", letterSpacing: -0.3 }}>
           {survey.title}
         </span>
         <span style={{ fontSize: 13, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
@@ -176,9 +176,9 @@ export default function SurveyAnswerPage({
         </span>
       </nav>
 
-      <div className="mx-auto flex min-h-screen max-w-2xl flex-col px-5" style={{ paddingTop: "calc(var(--nav-height) + 2rem)", paddingBottom: "3rem" }}>
+      <div className="mx-auto flex min-h-screen max-w-2xl flex-col px-4 sm:px-5" style={{ paddingTop: "calc(var(--nav-height) + 2rem)", paddingBottom: "3rem" }}>
         {/* Progress */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13, color: "var(--text-muted)", fontWeight: 500 }}>
             <span>第 {step + 1} / {total} 题</span>
             <span style={{ color: "var(--primary)", fontWeight: 600 }}>{Math.round(pct)}%</span>
@@ -190,7 +190,7 @@ export default function SurveyAnswerPage({
 
         {/* Question card */}
         <div className="flex-1" key={animKey}>
-          <div className="card animate-in">
+          <div className="card animate-in" style={{ padding: "1.5rem" }}>
             <QuestionBadge type={question?.type ?? ""} />
 
             {question?.image_url && (
@@ -207,14 +207,11 @@ export default function SurveyAnswerPage({
               </div>
             )}
 
-            <h2 style={{
-              marginTop: question?.image_url ? 0 : "1.5rem",
-              marginBottom: "2rem",
-              fontSize: 28,
-              fontWeight: 700,
+            <h2 className="text-xl sm:text-2xl font-bold leading-relaxed" style={{
+              marginTop: question?.image_url ? 0 : "1.25rem",
+              marginBottom: "1.5rem",
               color: "var(--text-primary)",
-              lineHeight: 1.3,
-              letterSpacing: -0.4,
+              letterSpacing: -0.3,
             }}>
               {question?.title}
             </h2>
@@ -244,14 +241,14 @@ export default function SurveyAnswerPage({
             {/* Navigation */}
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: "2.5rem", gap: 12 }}>
               {step > 0 ? (
-                <button onClick={handlePrev} className="btn-secondary">
+                <button onClick={handlePrev} className="btn-secondary text-sm sm:text-base">
                   上一题
                 </button>
               ) : <span />}
               <button
                 onClick={handleNext}
                 disabled={submitting}
-                className="btn-primary"
+                className="btn-primary text-sm sm:text-base"
               >
                 {submitting ? "提交中..." : isLast ? "提交问卷" : "下一题"}
               </button>
@@ -338,7 +335,7 @@ function AnswerInput({
               className={selected ? "option-selected" : "option-default"}
               style={{
                 display: "flex", alignItems: "center", gap: 12,
-                padding: "1rem 1.25rem",
+                padding: "0.875rem 1rem",
                 border: selected ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
                 borderRadius: "var(--radius-sm)",
                 cursor: "pointer",
@@ -399,7 +396,7 @@ function AnswerInput({
               tabIndex={0}
               style={{
                 display: "flex", alignItems: "center", gap: 12,
-                padding: "1rem 1.25rem",
+                padding: "0.875rem 1rem",
                 border: checked ? "1.5px solid var(--accent-green)" : "1.5px solid var(--border)",
                 borderRadius: "var(--radius-sm)",
                 cursor: "pointer",
@@ -471,11 +468,11 @@ function AnswerInput({
                 type="button"
                 onClick={() => onChange(String(star))}
                 style={{
-                  width: 52, height: 52, borderRadius: "50%",
+                  width: 44, height: 44, borderRadius: "50%",
                   border: active ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
                   background: active ? "var(--primary)" : "rgba(255,255,255,0.4)",
                   color: active ? "#fff" : "var(--text-primary)",
-                  fontSize: 18, fontWeight: 600,
+                  fontSize: 16, fontWeight: 600,
                   cursor: "pointer",
                   fontFamily: "inherit",
                   transition: "all 0.3s ease-out",
