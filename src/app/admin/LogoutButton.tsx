@@ -6,7 +6,7 @@ export default function LogoutButton() {
   const router = useRouter();
 
   const handleLogout = async () => {
-    await fetch("/api/admin/logout", { method: "POST" });
+    await fetch("/api/survey-admin/logout", { method: "POST" });
     router.replace("/admin/login");
   };
 

@@ -60,7 +60,7 @@ export default function QuestionEditor({ questions, onChange }: Props) {
   const handleImageUpload = async (qi: number, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
+    const res = await fetch("/api/survey-admin/upload", { method: "POST", body: formData });
     const data = await res.json();
     if (data.url) update(qi, { image_url: data.url });
   };

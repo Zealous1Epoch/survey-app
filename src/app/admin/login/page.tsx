@@ -16,7 +16,7 @@ function LoginForm() {
     setLoading(true);
     setError("");
 
-    const res = await fetch("/api/admin/login", {
+    const res = await fetch("/api/survey-admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),

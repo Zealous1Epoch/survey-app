@@ -22,7 +22,7 @@ export default function NewSurveyPage() {
     setSaving(true);
     setError("");
 
-    const res = await fetch("/api/admin/surveys", {
+    const res = await fetch("/api/survey-admin/surveys", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

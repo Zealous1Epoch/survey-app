@@ -33,9 +33,9 @@ export default function SurveyDataPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/admin/surveys/${id}`).then((r) => r.json()),
-      fetch(`/api/admin/surveys/${id}/stats`).then((r) => r.json()),
-      fetch(`/api/admin/surveys/${id}/responses`).then((r) => r.json()),
+      fetch(`/api/survey-admin/surveys/${id}`).then((r) => r.json()),
+      fetch(`/api/survey-admin/surveys/${id}/stats`).then((r) => r.json()),
+      fetch(`/api/survey-admin/surveys/${id}/responses`).then((r) => r.json()),
     ])
       .then(([survey, statsData, subs]) => {
         setSurveyTitle(survey.title);
@@ -54,18 +54,18 @@ export default function SurveyDataPage() {
   }, [id]);
 
   const handleExport = () => {
-    window.open(`/api/admin/surveys/${id}/export`, "_blank");
+    window.open(`/api/survey-admin/surveys/${id}/export`, "_blank");
   };
 
   const handleDeleteSubmission = async (submissionId: string) => {
     if (!confirm("确定删除这条回答？")) return;
-    await fetch(`/api/admin/surveys/${id}/responses?submission_id=${submissionId}`, { method: "DELETE" });
+    await fetch(`/api/survey-admin/surveys/${id}/responses?submission_id=${submissionId}`, { method: "DELETE" });
     setSubmissions((prev) => prev.filter((s) => s.submission_id !== submissionId));
   };
 
   const handleClearAll = async () => {
     if (!confirm("确定清空该问卷的所有回答？此操作不可恢复。")) return;
-    await fetch(`/api/admin/surveys/${id}/responses`, { method: "DELETE" });
+    await fetch(`/api/survey-admin/surveys/${id}/responses`, { method: "DELETE" });
     setSubmissions([]);
   };
 

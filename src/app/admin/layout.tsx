@@ -21,7 +21,7 @@ export default function AdminLayout({
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    fetch("/api/admin/me")
+    fetch("/api/survey-admin/me")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => setUser(data))
       .catch(() => setUser(null));

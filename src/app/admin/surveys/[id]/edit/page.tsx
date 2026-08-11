@@ -16,7 +16,7 @@ export default function EditSurveyPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch(`/api/admin/surveys/${id}`)
+    fetch(`/api/survey-admin/surveys/${id}`)
       .then((r) => r.json())
       .then((data) => {
         setTitle(data.title);
@@ -43,7 +43,7 @@ export default function EditSurveyPage() {
     setSaving(true);
     setError("");
 
-    const res = await fetch(`/api/admin/surveys/${id}`, {
+    const res = await fetch(`/api/survey-admin/surveys/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

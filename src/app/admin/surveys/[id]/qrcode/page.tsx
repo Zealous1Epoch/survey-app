@@ -23,7 +23,7 @@ export default function QRCodePage() {
       setBaseUrl(window.location.origin);
     }
 
-    fetch(`/api/admin/surveys/${id}`)
+    fetch(`/api/survey-admin/surveys/${id}`)
       .then((r) => r.json())
       .then((data) => {
         setSurveyTitle(data.title);
@@ -115,7 +115,7 @@ export default function QRCodePage() {
 
       {/* Single QR for the whole survey */}
       <div className="mx-auto max-w-sm">
-        <QRCodeCard url={`${baseUrl}/s/${id}`} title={surveyTitle} />
+        <QRCodeCard url={`${baseUrl}/survey/s/${id}`} title={surveyTitle} />
       </div>
     </div>
   );

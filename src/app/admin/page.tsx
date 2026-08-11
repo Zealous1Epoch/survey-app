@@ -9,7 +9,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchSurveys = () => {
-    fetch("/api/admin/surveys")
+    fetch("/api/survey-admin/surveys")
       .then((r) => r.json())
       .then(setSurveys)
       .finally(() => setLoading(false));
@@ -21,7 +21,7 @@ export default function AdminPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("确定删除此问卷？所有题目和回答数据将被删除。")) return;
-    await fetch(`/api/admin/surveys/${id}`, { method: "DELETE" });
+    await fetch(`/api/survey-admin/surveys/${id}`, { method: "DELETE" });
     fetchSurveys();
   };
 

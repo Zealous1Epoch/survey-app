@@ -20,7 +20,7 @@ export default function AccountsPage() {
   const [editing, setEditing] = useState(false);
 
   const fetchUsers = useCallback(() => {
-    fetch("/api/admin/accounts")
+    fetch("/api/survey-admin/accounts")
       .then((r) => {
         if (r.status === 403) throw new Error("无权限");
         return r.json();
@@ -40,7 +40,7 @@ export default function AccountsPage() {
     setCreating(true);
     setError("");
 
-    const res = await fetch("/api/admin/accounts", {
+    const res = await fetch("/api/survey-admin/accounts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username: newUsername, password: newPassword, role: newRole }),
@@ -60,7 +60,7 @@ export default function AccountsPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("确定删除此账号？该账号的问卷将转移给超级管理员。")) return;
-    const res = await fetch("/api/admin/accounts", {
+    const res = await fetch("/api/survey-admin/accounts", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
@@ -81,7 +81,7 @@ export default function AccountsPage() {
     setEditing(true);
     setError("");
 
-    const res = await fetch(`/api/admin/accounts/${id}`, {
+    const res = await fetch(`/api/survey-admin/accounts/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: editPassword }),
