@@ -6,3 +6,6 @@ data/*.db-wal
 .superpowers/
 .vercel
 .env
+.env.bak
+logs/
+public/uploads/
