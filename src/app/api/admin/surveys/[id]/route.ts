@@ -12,15 +12,28 @@ import {
   QuestionType,
 } from "@/lib/db/questions";
 
+/** 检查所有权：非 super_admin 且问卷不属于当前用户时返回 403 */
+function checkOwnership(survey: { user_id: string | null } | null, req: NextRequest): NextResponse | null {
+  if (!survey) {
+    return NextResponse.json({ error: "问卷不存在" }, { status: 404 });
+  }
+  const role = req.headers.get("x-user-role");
+  const userId = req.headers.get("x-user-id");
+  if (role !== "super_admin" && survey.user_id !== userId) {
+    return NextResponse.json({ error: "无权限" }, { status: 403 });
+  }
+  return null;
+}
+
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   const survey = await getSurvey(id);
-  if (!survey) {
-    return NextResponse.json({ error: "问卷不存在" }, { status: 404 });
-  }
+  const err = checkOwnership(survey, req);
+  if (err) return err;
+
   const questions = (await getQuestions(id)).map(sanitizeQuestion);
   return NextResponse.json({ ...survey, questions });
 }
@@ -31,9 +44,8 @@ export async function PUT(
 ) {
   const { id } = await params;
   const survey = await getSurvey(id);
-  if (!survey) {
-    return NextResponse.json({ error: "问卷不存在" }, { status: 404 });
-  }
+  const err = checkOwnership(survey, req);
+  if (err) return err;
 
   const body = await req.json();
   const { title, description, redirect_url, questions } = body;
@@ -51,10 +63,14 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const survey = await getSurvey(id);
+  const err = checkOwnership(survey, req);
+  if (err) return err;
+
   const deleted = await deleteSurvey(id);
   if (!deleted) {
     return NextResponse.json({ error: "问卷不存在" }, { status: 404 });

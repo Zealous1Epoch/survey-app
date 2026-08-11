@@ -1,18 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getUserByUsername, getUserCount, createUser, verifyPassword, assignOrphanSurveys } from "@/lib/db/users";
+import { signToken } from "@/lib/jwt";
 
 export async function POST(req: NextRequest) {
-  const { password } = await req.json();
-  const adminPassword = process.env.ADMIN_PASSWORD;
+  const { username, password } = await req.json();
 
-  if (!adminPassword) {
-    return NextResponse.json({ success: true });
+  if (!username || !password) {
+    return NextResponse.json({ error: "用户名和密码不能为空" }, { status: 400 });
   }
 
-  if (password !== adminPassword) {
-    return NextResponse.json({ error: "密码错误" }, { status: 401 });
+  // 首次初始化：用户表为空时，自动创建 super_admin
+  const count = await getUserCount();
+  if (count === 0) {
+    const user = await createUser({ username, password, role: "super_admin" });
+    // 将已有的孤儿问卷分配给此用户
+    await assignOrphanSurveys(user.id);
+    const token = await signToken({ userId: user.id, username: user.username, role: user.role });
+
+    const res = NextResponse.json({ success: true, isFirstUser: true });
+    setAuthCookie(res, token);
+    return res;
   }
 
-  // HTTP 环境下 secure 必须为 false，否则浏览器会拒绝 Secure Cookie
+  // 正常登录
+  const user = await getUserByUsername(username);
+  if (!user) {
+    return NextResponse.json({ error: "用户名或密码错误" }, { status: 401 });
+  }
+
+  const valid = await verifyPassword(user, password);
+  if (!valid) {
+    return NextResponse.json({ error: "用户名或密码错误" }, { status: 401 });
+  }
+
+  const token = await signToken({ userId: user.id, username: user.username, role: user.role });
+
+  const res = NextResponse.json({ success: true });
+  setAuthCookie(res, token);
+  return res;
+}
+
+function setAuthCookie(res: NextResponse, token: string) {
   const cookieOpts = {
     httpOnly: true,
     secure: false,
@@ -20,10 +48,6 @@ export async function POST(req: NextRequest) {
     maxAge: 60 * 60 * 24 * 7,
     path: "/",
   };
-
-  const res = NextResponse.json({ success: true });
-  res.cookies.set("admin_token", password, cookieOpts);
+  res.cookies.set("auth_token", token, cookieOpts);
   res.cookies.set("admin_logged_in", "1", { ...cookieOpts, httpOnly: false });
-
-  return res;
 }

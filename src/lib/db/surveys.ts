@@ -6,6 +6,7 @@ export interface Survey {
   title: string;
   description: string;
   redirect_url: string;
+  user_id: string | null;
   created_at: string;
 }
 
@@ -14,14 +15,22 @@ export interface SurveyWithCounts extends Survey {
   response_count: number;
 }
 
-export async function getSurveys(): Promise<SurveyWithCounts[]> {
+/** 获取问卷列表，可选按 userId 过滤 */
+export async function getSurveys(userId?: string): Promise<SurveyWithCounts[]> {
   const db = await getDb();
-  const [rows] = await db.query(
-    `SELECT s.*,
+  let sql = `SELECT s.*,
       (SELECT COUNT(*) FROM questions WHERE survey_id = s.id) as question_count,
       (SELECT COUNT(DISTINCT r.id) FROM responses r WHERE r.survey_id = s.id) as response_count
-     FROM surveys s ORDER BY s.created_at DESC`
-  );
+     FROM surveys s`;
+  const params: string[] = [];
+
+  if (userId) {
+    sql += " WHERE s.user_id = ?";
+    params.push(userId);
+  }
+
+  sql += " ORDER BY s.created_at DESC";
+  const [rows] = await db.query(sql, params);
   return rows as SurveyWithCounts[];
 }
 
@@ -39,15 +48,23 @@ export async function createSurvey(data: {
   title: string;
   description?: string;
   redirect_url?: string;
+  userId: string;
 }): Promise<Survey> {
   const db = await getDb();
   const id = uuid();
   const now = new Date().toISOString();
   await db.execute(
-    "INSERT INTO surveys (id, title, description, redirect_url, created_at) VALUES (?, ?, ?, ?, ?)",
-    [id, data.title, data.description ?? "", data.redirect_url ?? "", now]
+    "INSERT INTO surveys (id, title, description, redirect_url, user_id, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+    [id, data.title, data.description ?? "", data.redirect_url ?? "", data.userId, now]
   );
-  return { id, title: data.title, description: data.description ?? "", redirect_url: data.redirect_url ?? "", created_at: now };
+  return {
+    id,
+    title: data.title,
+    description: data.description ?? "",
+    redirect_url: data.redirect_url ?? "",
+    user_id: data.userId,
+    created_at: now,
+  };
 }
 
 export async function updateSurvey(

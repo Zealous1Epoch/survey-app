@@ -298,3 +298,4 @@
   transition: box-shadow 0.3s;
 }
 .navbar.scrolled { box-shadow: 0 1px 0 rgba(0,0,0,0.06); }
+.navbar { border-bottom: 1px solid var(--border-light); }

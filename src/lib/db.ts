@@ -41,6 +41,17 @@ export async function getDb(): Promise<mysql.Pool> {
 }
 
 async function initTables(p: mysql.Pool): Promise<void> {
+  // 用户表
+  await p.execute(`
+    CREATE TABLE IF NOT EXISTS users (
+      id VARCHAR(36) PRIMARY KEY,
+      username VARCHAR(100) NOT NULL UNIQUE,
+      password VARCHAR(255) NOT NULL,
+      role VARCHAR(20) NOT NULL DEFAULT 'admin',
+      created_at VARCHAR(30) NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
   await p.execute(`
     CREATE TABLE IF NOT EXISTS surveys (
       id VARCHAR(36) PRIMARY KEY,
@@ -96,5 +107,12 @@ async function initTables(p: mysql.Pool): Promise<void> {
   if (!(rCols as any[]).some((c: any) => c.Field === "submission_id")) {
     await p.execute(`ALTER TABLE responses ADD COLUMN submission_id VARCHAR(36) DEFAULT ''`);
     try { await p.execute(`CREATE INDEX idx_responses_submission ON responses(submission_id)`); } catch (_) {}
+  }
+
+  // 迁移：检查 surveys 表是否有 user_id 列
+  const [sCols] = await p.query(`SHOW COLUMNS FROM surveys`) as any;
+  if (!(sCols as any[]).some((c: any) => c.Field === "user_id")) {
+    await p.execute(`ALTER TABLE surveys ADD COLUMN user_id VARCHAR(36) DEFAULT NULL`);
+    try { await p.execute(`CREATE INDEX idx_surveys_user ON surveys(user_id)`); } catch (_) {}
   }
 }
