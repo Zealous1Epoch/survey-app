@@ -10,7 +10,6 @@ export default function EditSurveyPage() {
   const { id } = useParams<{ id: string }>();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [redirectUrl, setRedirectUrl] = useState("");
   const [questions, setQuestions] = useState<QuestionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -22,14 +21,12 @@ export default function EditSurveyPage() {
       .then((data) => {
         setTitle(data.title);
         setDescription(data.description);
-        setRedirectUrl(data.redirect_url);
         setQuestions(
-          data.questions.map((q: { type: string; title: string; options: string[]; required: boolean; redirect_url: string; order: number }) => ({
+          data.questions.map((q: { type: string; title: string; options: string[]; required: boolean; order: number }) => ({
             type: q.type,
             title: q.title,
             options: q.options,
             required: q.required,
-            redirect_url: q.redirect_url,
             order: q.order,
           }))
         );
@@ -52,7 +49,6 @@ export default function EditSurveyPage() {
       body: JSON.stringify({
         title: title.trim(),
         description,
-        redirect_url: redirectUrl,
         questions: questions.map((q) => ({
           ...q,
           title: q.title.trim(),
@@ -117,16 +113,6 @@ export default function EditSurveyPage() {
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
               className="textarea-field"
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">提交后跳转地址</label>
-            <input
-              type="text"
-              value={redirectUrl}
-              onChange={(e) => setRedirectUrl(e.target.value)}
-              placeholder="留空则显示确认页"
-              className="input-field"
             />
           </div>
         </div>

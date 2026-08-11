@@ -50,7 +50,7 @@ export default function AdminLayout({
               className="text-lg font-semibold tracking-tight"
               style={{ color: navColor, letterSpacing: "-0.01em" }}
             >
-              问卷管理
+              问卷月
             </Link>
             {user?.role === "super_admin" && (
               <Link

@@ -8,14 +8,14 @@ interface QuestionData {
   title: string;
   options: string[];
   required: boolean;
-  redirect_url: string;
+
   image_url: string;
 }
 
 interface SurveyData {
   title: string;
   description: string;
-  redirect_url: string;
+
   questions: QuestionData[];
 }
 
@@ -102,10 +102,6 @@ export default function SurveyAnswerPage({
       const result = await res.json();
       if (result.success) {
         setDone(true);
-        if (result.redirect_url) {
-          setTimeout(() => { window.location.href = result.redirect_url; }, 1500);
-        }
-      } else {
         setFieldError(result.error ?? "提交失败");
       }
     } catch {
@@ -188,6 +184,7 @@ export default function SurveyAnswerPage({
           </div>
         </div>
 
+{/* Description */}        {survey.description && (          <div className="mb-6" style={{ fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.7 }}>            {survey.description}          </div>        )}
         {/* Question card */}
         <div className="flex-1" key={animKey}>
           <div className="card animate-in" style={{ padding: "1.5rem" }}>

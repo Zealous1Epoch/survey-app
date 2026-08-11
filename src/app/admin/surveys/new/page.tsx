@@ -9,7 +9,6 @@ export default function NewSurveyPage() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [redirectUrl, setRedirectUrl] = useState("");
   const [questions, setQuestions] = useState<QuestionData[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -29,7 +28,6 @@ export default function NewSurveyPage() {
       body: JSON.stringify({
         title: title.trim(),
         description,
-        redirect_url: redirectUrl,
         questions: questions.map((q) => ({
           ...q,
           title: q.title.trim(),
@@ -79,17 +77,6 @@ export default function NewSurveyPage() {
               placeholder="问卷说明文字..."
               rows={2}
               className="textarea-field"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">提交后跳转地址</label>
-            <input
-              type="text"
-              value={redirectUrl}
-              onChange={(e) => setRedirectUrl(e.target.value)}
-              placeholder="留空则显示确认页"
-              className="input-field"
             />
           </div>
         </div>

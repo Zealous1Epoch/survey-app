@@ -27,6 +27,6 @@ export async function POST(
   return NextResponse.json({
     success: true,
     submission_id: submissionId,
-    redirect_url: survey.redirect_url || "",
+    
   });
 }

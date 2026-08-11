@@ -37,11 +37,8 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
-            问卷管理
+            问卷月
           </h1>
-          <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-            请输入用户名和密码
-          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="card space-y-4">
