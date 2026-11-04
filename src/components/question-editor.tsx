@@ -208,8 +208,8 @@ export default function QuestionEditor({ questions, onChange }: Props) {
                   <button
                     type="button"
                     onClick={() => removeImage(qi)}
-                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full text-white"
-                    style={{ background: "var(--accent)" }}
+                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full"
+                    style={{ background: "var(--accent)", color: "#faf9f5" }}
                   >
                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                       <path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>

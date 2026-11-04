@@ -13,7 +13,7 @@ export default function QRCodeCard({ url, title }: Props) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    QRCode.toDataURL(url, { width: 220, margin: 1, color: { dark: "#2C2416", light: "#FFFFFF" } })
+    QRCode.toDataURL(url, { width: 220, margin: 1, color: { dark: "#2C2416", light: "#faf9f5" } })
       .then(setDataUrl)
       .catch(() => setDataUrl(""));
   }, [url]);

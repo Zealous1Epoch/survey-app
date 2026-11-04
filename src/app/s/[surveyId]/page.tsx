@@ -265,7 +265,7 @@ export default function SurveyAnswerPage({
           style={{
             position: "fixed", inset: 0, zIndex: 200,
             display: "flex", alignItems: "center", justifyContent: "center",
-            padding: "1rem", background: "rgba(0,0,0,0.85)",
+            padding: "1rem", background: "rgba(20,20,19,0.88)",
           }}
           onClick={() => setZoomImg(null)}
         >
@@ -274,7 +274,7 @@ export default function SurveyAnswerPage({
             style={{
               position: "absolute", top: 16, right: 16,
               width: 36, height: 36, borderRadius: "50%",
-              background: "rgba(255,255,255,0.15)", color: "#fff",
+              background: "rgba(245,244,237,0.14)", color: "#f5f4ed",
               display: "flex", alignItems: "center", justifyContent: "center",
               border: "none", cursor: "pointer", fontSize: 18,
             }}
@@ -284,7 +284,7 @@ export default function SurveyAnswerPage({
           <img
             src={zoomImg}
             alt="查看大图"
-            style={{ maxHeight: "90vh", maxWidth: "90vw", borderRadius: 12, objectFit: "contain" }}
+            style={{ maxHeight: "90vh", maxWidth: "90vw", borderRadius: 6, objectFit: "contain" }}
             onClick={(e) => e.stopPropagation()}
           />
         </div>
@@ -294,16 +294,15 @@ export default function SurveyAnswerPage({
 }
 
 /* ---- Badge ---- */
-const badgeMap: Record<string, { text: string; color: string }> = {
-  choice: { text: "单选", color: "var(--accent)" },
-  multi: { text: "多选", color: "#7D9B8F" },
-  text: { text: "填空", color: "#8B7E6A" },
-  rating: { text: "评分", color: "#C8A45A" },
+const badgeMap: Record<string, string> = {
+  choice: "单选",
+  multi: "多选",
+  text: "填空",
+  rating: "评分",
 };
 
 function QuestionBadge({ type }: { type: string }) {
-  const b = badgeMap[type] ?? { text: type, color: "var(--text-muted)" };
-  return <span className="badge">{b.text}</span>;
+  return <span className="badge">{badgeMap[type] ?? type}</span>;
 }
 
 /* ---- Answer Input ---- */
@@ -329,31 +328,26 @@ function AnswerInput({
               role="radio"
               aria-checked={selected}
               tabIndex={0}
-              className={selected ? "option-selected" : "option-default"}
               style={{
                 display: "flex", alignItems: "center", gap: 12,
                 padding: "0.875rem 1rem",
                 border: selected ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
                 borderRadius: "var(--radius-sm)",
                 cursor: "pointer",
-                background: selected ? "var(--primary-light)" : "rgba(255,255,255,0.3)",
+                background: selected ? "var(--primary-light)" : "var(--bg-card)",
                 fontWeight: 500,
                 fontSize: 15,
-                transition: "all 0.3s ease-out",
+                transition: "border-color var(--motion-base) var(--ease-standard), background var(--motion-base) var(--ease-standard)",
               }}
               onClick={() => onChange(opt)}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onChange(opt); }}
               onMouseEnter={(e) => {
                 if (!selected) {
-                  e.currentTarget.style.transform = "translateY(-4px)";
-                  e.currentTarget.style.boxShadow = "var(--shadow-lg)";
                   e.currentTarget.style.borderColor = "var(--primary)";
                 }
               }}
               onMouseLeave={(e) => {
                 if (!selected) {
-                  e.currentTarget.style.transform = "";
-                  e.currentTarget.style.boxShadow = "";
                   e.currentTarget.style.borderColor = "var(--border)";
                 }
               }}
@@ -365,7 +359,7 @@ function AnswerInput({
                 flexShrink: 0,
                 background: selected ? "var(--primary)" : "transparent",
               }}>
-                {selected && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#fff" }} />}
+                {selected && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--bg-card)" }} />}
               </div>
               <span>{opt}</span>
             </div>
@@ -397,24 +391,20 @@ function AnswerInput({
                 border: checked ? "1.5px solid var(--accent-green)" : "1.5px solid var(--border)",
                 borderRadius: "var(--radius-sm)",
                 cursor: "pointer",
-                background: checked ? "var(--accent-green-light)" : "rgba(255,255,255,0.3)",
+                background: checked ? "var(--accent-green-light)" : "var(--bg-card)",
                 fontWeight: 500,
                 fontSize: 15,
-                transition: "all 0.3s ease-out",
+                transition: "border-color var(--motion-base) var(--ease-standard), background var(--motion-base) var(--ease-standard)",
               }}
               onClick={toggle}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") toggle(); }}
               onMouseEnter={(e) => {
                 if (!checked) {
-                  e.currentTarget.style.transform = "translateY(-4px)";
-                  e.currentTarget.style.boxShadow = "var(--shadow-lg)";
                   e.currentTarget.style.borderColor = "var(--accent-green)";
                 }
               }}
               onMouseLeave={(e) => {
                 if (!checked) {
-                  e.currentTarget.style.transform = "";
-                  e.currentTarget.style.boxShadow = "";
                   e.currentTarget.style.borderColor = "var(--border)";
                 }
               }}
@@ -428,7 +418,7 @@ function AnswerInput({
               }}>
                 {checked && (
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M2.5 6l2.5 2.5 4.5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M2.5 6l2.5 2.5 4.5-5" stroke="#faf9f5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 )}
               </div>
@@ -467,29 +457,23 @@ function AnswerInput({
                 style={{
                   width: 44, height: 44, borderRadius: "50%",
                   border: active ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
-                  background: active ? "var(--primary)" : "rgba(255,255,255,0.4)",
-                  color: active ? "#fff" : "var(--text-primary)",
+                  background: active ? "var(--primary)" : "var(--bg-card)",
+                  color: active ? "var(--bg-card)" : "var(--text-primary)",
                   fontSize: 16, fontWeight: 600,
                   cursor: "pointer",
                   fontFamily: "inherit",
-                  transition: "all 0.3s ease-out",
+                  transition: "border-color var(--motion-base) var(--ease-standard), background var(--motion-base) var(--ease-standard)",
                 }}
                 onMouseEnter={(e) => {
                   if (!active) {
-                    e.currentTarget.style.transform = "translateY(-4px)";
-                    e.currentTarget.style.boxShadow = "var(--shadow-lg)";
                     e.currentTarget.style.borderColor = "var(--primary)";
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!active) {
-                    e.currentTarget.style.transform = "";
-                    e.currentTarget.style.boxShadow = "";
                     e.currentTarget.style.borderColor = "var(--border)";
                   }
                 }}
-                onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
-                onMouseUp={(e) => { e.currentTarget.style.transform = ""; }}
               >
                 {star}
               </button>

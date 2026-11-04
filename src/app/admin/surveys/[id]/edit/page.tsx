@@ -14,23 +14,31 @@ export default function EditSurveyPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     fetch(`/api/survey-admin/surveys/${id}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      })
       .then((data) => {
         setTitle(data.title);
-        setDescription(data.description);
+        setDescription(data.description ?? "");
+        // 回填 id 供服务端 diff 定位存量题目；缺 id 会被当成新题重建
         setQuestions(
-          data.questions.map((q: { type: string; title: string; options: string[]; required: boolean; order: number }) => ({
+          data.questions.map((q: { id: string; type: string; title: string; options: string[]; required: boolean; image_url?: string; order: number }) => ({
+            id: q.id,
             type: q.type,
             title: q.title,
             options: q.options,
             required: q.required,
+            image_url: q.image_url ?? "",
             order: q.order,
           }))
         );
       })
+      .catch(() => setLoadError("问卷加载失败，请刷新重试"))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -72,6 +80,18 @@ export default function EditSurveyPage() {
         <div className="space-y-4">
           <div className="card animate-pulse" style={{ height: 200 }} />
           <div className="card animate-pulse" style={{ height: 300 }} />
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    // 加载失败时禁止编辑保存——此时 questions 为空，保存会误删全部题目
+    return (
+      <div className="mx-auto max-w-2xl">
+        <div className="card" style={{ textAlign: "center" }}>
+          <p className="mb-4 text-sm" style={{ color: "var(--accent)" }}>{loadError}</p>
+          <button onClick={() => window.location.reload()} className="btn-secondary text-sm">重新加载</button>
         </div>
       </div>
     );

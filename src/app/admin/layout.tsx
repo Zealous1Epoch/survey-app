@@ -38,7 +38,7 @@ export default function AdminLayout({
     return <>{children}</>;
   }
 
-  const navColor = "#2D5A8A";
+  const navColor = "var(--primary)";
 
   return (
     <div className="min-h-screen">
