@@ -9,3 +9,4 @@ data/*.db-wal
 .env.bak
 logs/
 public/uploads/
+tsconfig.tsbuildinfo

@@ -27,8 +27,10 @@ export async function POST(req: NextRequest) {
   const survey = await createSurvey({ title: title.trim(), description, redirect_url, userId });
 
   if (questions && Array.isArray(questions)) {
-    for (const q of questions) {
-      await createQuestion(survey.id, { ...q, order: q.order ?? 0 });
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      // order 兜底用数组下标：全 0 会让 MySQL 返回顺序不稳定（新建问卷题目乱序）
+      await createQuestion(survey.id, { ...q, order: q.order ?? i });
     }
   }
 
