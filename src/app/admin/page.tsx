@@ -25,13 +25,17 @@ export default function AdminPage() {
     fetchSurveys();
   };
 
+  const totalResponses = surveys.reduce((a, s) => a + (s.response_count ?? 0), 0);
+
   return (
     <div>
       <div className="mb-8 flex items-end justify-between">
         <div>
-          <p className="mb-1 text-xs font-medium tracking-widest uppercase" style={{ color: "var(--text-muted)" }}>
-            Surveys
-          </p>
+          {!loading && surveys.length > 0 && (
+            <p className="nums mb-1 text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+              共 {surveys.length} 份问卷 · {totalResponses} 条回答
+            </p>
+          )}
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ letterSpacing: "-0.02em" }}>
             问卷列表
           </h1>
@@ -69,11 +73,11 @@ export default function AdminPage() {
           {surveys.map((s, i) => (
             <div
               key={s.id}
-              className={`card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-in animate-in-delay-${i + 1}`}
+              className="card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-in"
               style={{ padding: "1rem 1.25rem" }}
             >
               <div className="flex items-center gap-3 sm:gap-5 min-w-0">
-                <div className="flex h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold" style={{ background: "var(--bg-subtle)", color: "var(--text-secondary)" }}>
+                <div className="nums flex h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 items-center justify-center rounded-md text-xs font-bold" style={{ background: "var(--bg-subtle)", color: "var(--text-secondary)" }}>
                   {i + 1}
                 </div>
                 <div className="min-w-0">
@@ -85,9 +89,9 @@ export default function AdminPage() {
                     {s.title}
                   </Link>
                   <div className="mt-0.5 flex items-center gap-2 sm:gap-3 text-xs" style={{ color: "var(--text-muted)" }}>
-                    <span>{s.question_count} 题</span>
+                    <span className="nums">{s.question_count} 题</span>
                     <span>·</span>
-                    <span>{s.response_count} 条回答</span>
+                    <span className="nums">{s.response_count} 条回答</span>
                     <span className="hidden sm:inline">·</span>
                     <span className="hidden sm:inline">{new Date(s.created_at).toLocaleDateString("zh-CN")}</span>
                   </div>

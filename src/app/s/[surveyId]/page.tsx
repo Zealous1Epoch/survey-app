@@ -176,8 +176,8 @@ export default function SurveyAnswerPage({
         {/* Progress */}
         <div className="mb-6 sm:mb-8">
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13, color: "var(--text-muted)", fontWeight: 500 }}>
-            <span>第 {step + 1} / {total} 题</span>
-            <span style={{ color: "var(--primary)", fontWeight: 600 }}>{Math.round(pct)}%</span>
+            <span className="nums">第 {step + 1} / {total} 题</span>
+            <span className="nums" style={{ color: "var(--primary)", fontWeight: 600 }}>{Math.round(pct)}%</span>
           </div>
           <div className="progress-bar">
             <div className="progress-fill" style={{ width: `${pct}%` }} />
@@ -198,9 +198,6 @@ export default function SurveyAnswerPage({
                   style={{ width: "100%", maxHeight: "40vh", objectFit: "cover", borderRadius: "var(--radius-sm)", cursor: "pointer", border: "1px solid var(--border)" }}
                   onClick={() => setZoomImg(question.image_url)}
                 />
-                <p style={{ marginTop: 6, fontSize: 12, textAlign: "center", color: "var(--text-muted)" }}>
-                  点击图片可放大
-                </p>
               </div>
             )}
 
@@ -273,7 +270,7 @@ export default function SurveyAnswerPage({
             onClick={() => setZoomImg(null)}
             style={{
               position: "absolute", top: 16, right: 16,
-              width: 36, height: 36, borderRadius: "50%",
+              width: 36, height: 36, borderRadius: 6,
               background: "rgba(245,244,237,0.14)", color: "#f5f4ed",
               display: "flex", alignItems: "center", justifyContent: "center",
               border: "none", cursor: "pointer", fontSize: 18,
@@ -453,9 +450,10 @@ function AnswerInput({
               <button
                 key={star}
                 type="button"
+                className="nums"
                 onClick={() => onChange(String(star))}
                 style={{
-                  width: 44, height: 44, borderRadius: "50%",
+                  width: 44, height: 44, borderRadius: 6,
                   border: active ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
                   background: active ? "var(--primary)" : "var(--bg-card)",
                   color: active ? "var(--bg-card)" : "var(--text-primary)",

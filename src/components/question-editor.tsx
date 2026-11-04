@@ -110,7 +110,7 @@ export default function QuestionEditor({ questions, onChange }: Props) {
             {/* Row 1: index + type + required + delete — 小屏堆叠 */}
             <div className="mb-3 flex flex-wrap items-center gap-2 sm:gap-3">
               <span
-                className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                className="nums flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-xs font-semibold"
                 style={{ background: "var(--bg-subtle)", color: "var(--text-secondary)" }}
               >
                 {qi + 1}
@@ -157,7 +157,7 @@ export default function QuestionEditor({ questions, onChange }: Props) {
                 {(q.options ?? []).map((opt, oi) => (
                   <div key={oi} className="flex items-center gap-2">
                     <span
-                      className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs font-medium"
+                      className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md text-xs font-medium"
                       style={{ background: "var(--bg-subtle)", color: "var(--text-muted)" }}
                     >
                       {String.fromCharCode(65 + oi)}
@@ -208,7 +208,7 @@ export default function QuestionEditor({ questions, onChange }: Props) {
                   <button
                     type="button"
                     onClick={() => removeImage(qi)}
-                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full"
+                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-sm"
                     style={{ background: "var(--accent)", color: "#faf9f5" }}
                   >
                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none">

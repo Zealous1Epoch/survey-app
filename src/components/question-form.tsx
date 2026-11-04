@@ -174,7 +174,7 @@ export default function QuestionForm({ question, surveyId, onSubmit }: Props) {
                 >
                   {checked && (
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <path d="M2.5 6l2.5 2.5 4.5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M2.5 6l2.5 2.5 4.5-5" stroke="#faf9f5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   )}
                 </div>

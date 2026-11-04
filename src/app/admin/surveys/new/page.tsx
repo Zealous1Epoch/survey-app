@@ -63,7 +63,6 @@ export default function NewSurveyPage() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="例如：活动满意度调查"
               className="input-field"
               autoFocus
             />
@@ -74,7 +73,6 @@ export default function NewSurveyPage() {
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="问卷说明文字..."
               rows={2}
               className="textarea-field"
             />

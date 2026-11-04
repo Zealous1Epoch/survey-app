@@ -78,7 +78,7 @@ export default function QRCodePage() {
 
       {/* URL lock bar */}
       <div className="card mb-8">
-        <label className="mb-2 block text-xs font-medium tracking-wide uppercase" style={{ color: "var(--text-muted)" }}>
+        <label className="mb-2 block text-xs font-medium" style={{ color: "var(--text-muted)" }}>
           公网访问地址
         </label>
         <div className="flex gap-2">
@@ -108,9 +108,11 @@ export default function QRCodePage() {
             </button>
           )}
         </div>
-        <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
-          {urlLocked ? "地址已锁定，二维码指向固定 URL" : "输入扫码者实际访问的公网地址，然后锁定"}
-        </p>
+        {urlLocked && (
+          <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
+            地址已锁定，二维码指向固定 URL
+          </p>
+        )}
       </div>
 
       {/* Single QR for the whole survey */}

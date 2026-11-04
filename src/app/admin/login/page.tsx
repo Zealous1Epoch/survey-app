@@ -47,6 +47,8 @@ function LoginForm() {
             value={username}
             onChange={(e) => { setUsername(e.target.value); setError(""); }}
             placeholder="用户名"
+            aria-label="用户名"
+            autoComplete="username"
             className="input-field"
             autoFocus
           />
@@ -55,6 +57,8 @@ function LoginForm() {
             value={password}
             onChange={(e) => { setPassword(e.target.value); setError(""); }}
             placeholder="密码"
+            aria-label="密码"
+            autoComplete="current-password"
             className="input-field"
           />
           {error && (

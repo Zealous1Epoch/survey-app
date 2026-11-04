@@ -99,7 +99,7 @@ export default function SurveyDataPage() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ letterSpacing: "-0.02em" }}>
               {surveyTitle}
             </h1>
-            <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+            <p className="nums mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
               {submissions.length} 条回答
             </p>
           </div>
@@ -134,10 +134,10 @@ export default function SurveyDataPage() {
               <button
                 key={q.id}
                 onClick={() => setActiveQ(q.id)}
-                className="flex-shrink-0 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-all"
+                className="flex-shrink-0 rounded-md px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-all"
                 style={
                   activeQ === q.id
-                    ? { background: "var(--text-primary)", color: "white" }
+                    ? { background: "var(--primary)", color: "#faf9f5" }
                     : { background: "var(--bg-subtle)", color: "var(--text-secondary)" }
                 }
               >
@@ -150,8 +150,8 @@ export default function SurveyDataPage() {
           {activeStats && (
             <div className="card" style={{ padding: "1.5rem" }}>
               <div className="mb-4 flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full" style={{ background: "var(--accent)" }} />
-                <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
+                <div className="h-2 w-2 rounded-full" style={{ background: "var(--primary)" }} />
+                <p className="nums text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
                   共 {activeStats.total} 条回答
                 </p>
               </div>
@@ -167,16 +167,16 @@ export default function SurveyDataPage() {
                         <div key={val}>
                           <div className="mb-1 flex items-center justify-between text-sm">
                             <span className="font-medium truncate mr-3">{val}</span>
-                            <span className="flex-shrink-0" style={{ color: "var(--text-secondary)" }}>
+                            <span className="nums flex-shrink-0" style={{ color: "var(--text-secondary)" }}>
                               {count} <span style={{ color: "var(--text-muted)" }}>({pct}%)</span>
                             </span>
                           </div>
-                          <div className="h-2 w-full overflow-hidden rounded-full" style={{ background: "var(--bg-subtle)" }}>
+                          <div className="h-2 w-full overflow-hidden rounded-md" style={{ background: "var(--bg-subtle)" }}>
                             <div
-                              className="h-full rounded-full transition-all duration-700 ease-out"
+                              className="h-full rounded-md transition-all duration-200"
                               style={{
                                 width: `${pct}%`,
-                                background: i === 0 ? "var(--accent)" : "var(--accent-green)",
+                                background: i === 0 ? "var(--primary)" : "var(--accent-green)",
                                 opacity: 1 - i * 0.12,
                               }}
                             />
@@ -208,7 +208,7 @@ export default function SurveyDataPage() {
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--border)" }}>
                       <th
-                        className="px-3 sm:px-5 py-3 text-xs font-medium tracking-wide uppercase sticky left-0 z-10"
+                        className="px-3 sm:px-5 py-3 text-xs font-medium sticky left-0 z-10"
                         style={{ color: "var(--text-muted)", background: "var(--bg-card)" }}
                       >
                         #
@@ -216,16 +216,16 @@ export default function SurveyDataPage() {
                       {questions.map((q) => (
                         <th
                           key={q.id}
-                          className="px-2 sm:px-4 py-3 text-xs font-medium tracking-wide uppercase whitespace-nowrap"
+                          className="px-2 sm:px-4 py-3 text-xs font-medium whitespace-nowrap"
                           style={{ color: "var(--text-muted)", minWidth: 100 }}
                         >
                           {q.title.length > 8 ? q.title.slice(0, 8) + "..." : q.title}
                         </th>
                       ))}
-                      <th className="px-2 sm:px-4 py-3 text-xs font-medium tracking-wide uppercase whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
+                      <th className="px-2 sm:px-4 py-3 text-xs font-medium whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
                         提交时间
                       </th>
-                      <th className="px-2 sm:px-4 py-3 text-xs font-medium tracking-wide uppercase whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
+                      <th className="px-2 sm:px-4 py-3 text-xs font-medium whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
                         操作
                       </th>
                     </tr>
@@ -234,15 +234,15 @@ export default function SurveyDataPage() {
                     {submissions.map((sub, i) => (
                       <tr
                         key={sub.submission_id}
-                        className="animate-in group"
+                        className="animate-in group transition-colors hover:bg-[color:var(--bg-subtle)]"
                         style={{
                           borderBottom: "1px solid var(--border-light)",
                           animationDelay: `${i * 0.02}s`,
                         }}
                       >
                         <td
-                          className="px-3 sm:px-5 py-3 font-medium sticky left-0 z-10"
-                          style={{ color: "var(--text-muted)", background: "var(--bg-card)" }}
+                          className="nums px-3 sm:px-5 py-3 font-medium sticky left-0 z-10 bg-[color:var(--bg-card)] group-hover:bg-[color:var(--bg-subtle)] transition-colors"
+                          style={{ color: "var(--text-muted)" }}
                         >
                           {i + 1}
                         </td>
@@ -253,7 +253,7 @@ export default function SurveyDataPage() {
                             )}
                           </td>
                         ))}
-                        <td className="px-2 sm:px-4 py-3 whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>
+                        <td className="nums px-2 sm:px-4 py-3 whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>
                           {new Date(sub.submitted_at).toLocaleString("zh-CN", {
                             month: "short",
                             day: "numeric",
@@ -264,8 +264,7 @@ export default function SurveyDataPage() {
                         <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
                           <button
                             onClick={() => handleDeleteSubmission(sub.submission_id)}
-                            className="text-xs transition-colors hover:text-red-500"
-                            style={{ color: "var(--text-muted)" }}
+                            className="text-xs transition-colors text-[color:var(--text-muted)] hover:text-[color:var(--accent)]"
                           >
                             删除
                           </button>
