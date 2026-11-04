@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useRef } from "react";
 
 interface QuestionData {
   id: string;
@@ -35,17 +35,79 @@ export default function SurveyAnswerPage({
   const [done, setDone] = useState(false);
   const [zoomImg, setZoomImg] = useState<string | null>(null);
   const [animKey, setAnimKey] = useState(0);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const autoNextTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const draftKey = `survey_draft_${surveyId}`;
 
   useEffect(() => {
     fetch(`/api/s/${surveyId}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.error) setError(data.error);
-        else setSurvey(data);
+        else {
+          setSurvey(data);
+          // 恢复上次未提交的草稿（仅保留仍存在的题目答案）
+          try {
+            const raw = localStorage.getItem(draftKey);
+            if (raw) {
+              const draft = JSON.parse(raw);
+              const ids = new Set((data.questions as QuestionData[]).map((q) => q.id));
+              const clean: Record<string, string> = {};
+              for (const [k, v] of Object.entries(draft.values ?? {})) {
+                if (ids.has(k)) clean[k] = v as string;
+              }
+              if (Object.keys(clean).length > 0) {
+                setValues(clean);
+                setStep(Math.min(Math.max(0, draft.step ?? 0), (data.questions?.length ?? 1) - 1));
+                setDraftRestored(true);
+              }
+            }
+          } catch { /* 草稿损坏则忽略 */ }
+        }
       })
       .catch(() => setError("加载失败"))
       .finally(() => setLoading(false));
-  }, [surveyId]);
+  }, [surveyId, draftKey]);
+
+  // 答案变化时写入草稿
+  useEffect(() => {
+    if (!survey || done) return;
+    try {
+      localStorage.setItem(draftKey, JSON.stringify({ values, step }));
+    } catch { /* 存储满则忽略 */ }
+  }, [values, step, survey, done, draftKey]);
+
+  // 提交成功后清草稿
+  useEffect(() => {
+    if (done) { try { localStorage.removeItem(draftKey); } catch { /* 忽略 */ } }
+  }, [done, draftKey]);
+
+  // 答题中途关页/刷新时挽留（已有作答且未提交）
+  const hasProgress = Object.values(values).some((v) => v !== "" && v !== "[]" && v !== "0");
+  useEffect(() => {
+    if (!hasProgress || done) return;
+    const onUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", onUnload);
+    return () => window.removeEventListener("beforeunload", onUnload);
+  }, [hasProgress, done]);
+
+  useEffect(() => () => { if (autoNextTimer.current) clearTimeout(autoNextTimer.current); }, []);
+
+  // 草稿恢复提示 3 秒后自动消失
+  useEffect(() => {
+    if (!draftRestored) return;
+    const t = setTimeout(() => setDraftRestored(false), 3000);
+    return () => clearTimeout(t);
+  }, [draftRestored]);
+
+  // lightbox 支持 ESC 关闭
+  useEffect(() => {
+    if (!zoomImg) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setZoomImg(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoomImg]);
 
   const question = survey?.questions[step] ?? null;
   const total = survey?.questions.length ?? 0;
@@ -62,12 +124,26 @@ export default function SurveyAnswerPage({
   const setVal = (qid: string, val: string) => {
     setValues((prev) => ({ ...prev, [qid]: val }));
     setFieldError("");
+    // 单选/评分：选完 400ms 自动跳下一题（最后一题不自动提交）
+    if (question && !isLast && question.id === qid) {
+      const auto = question.type === "choice" || question.type === "rating";
+      if (auto && val && val !== "0") {
+        if (autoNextTimer.current) clearTimeout(autoNextTimer.current);
+        autoNextTimer.current = setTimeout(() => {
+          setStep((s) => s + 1);
+          setAnimKey((k) => k + 1);
+        }, 400);
+      }
+    }
   };
 
   const handleNext = () => {
     if (!question) return;
+    if (autoNextTimer.current) { clearTimeout(autoNextTimer.current); autoNextTimer.current = null; }
     const v = getVal(question.id, question.type);
-    if (question.required && (!v || v === "" || v === "[]" || v === "0")) {
+    // 按题型判空：填空的 "0" 是有效答案，只有评分的 "0" 表示未评
+    const empty = !v || v === "" || v === "[]" || (question.type === "rating" && v === "0");
+    if (question.required && empty) {
       setFieldError("此题为必填");
       return;
     }
@@ -81,6 +157,7 @@ export default function SurveyAnswerPage({
   };
 
   const handlePrev = () => {
+    if (autoNextTimer.current) { clearTimeout(autoNextTimer.current); autoNextTimer.current = null; }
     setStep((s) => Math.max(0, s - 1));
     setFieldError("");
     setAnimKey((k) => k + 1);
@@ -102,6 +179,10 @@ export default function SurveyAnswerPage({
       const result = await res.json();
       if (result.success) {
         setDone(true);
+        if (result.redirect_url) {
+          setTimeout(() => { window.location.href = result.redirect_url; }, 1500);
+        }
+      } else {
         setFieldError(result.error ?? "提交失败");
       }
     } catch {
@@ -161,6 +242,18 @@ export default function SurveyAnswerPage({
 
   return (
     <div style={{ background: "var(--bg-primary)", minHeight: "100vh" }}>
+      {draftRestored && (
+        <div
+          style={{
+            position: "fixed", top: 12, left: "50%", transform: "translateX(-50%)", zIndex: 300,
+            padding: "0.5rem 1.25rem", borderRadius: "var(--radius-sm)", fontSize: 13, fontWeight: 500,
+            background: "var(--primary)", color: "#faf9f5",
+            animation: "fadeIn 0.3s ease-out",
+          }}
+        >
+          已恢复上次未提交的作答
+        </div>
+      )}
       {/* Navbar */}
       <nav className="navbar px-4 sm:px-8">
         <span style={{ fontSize: 18, fontWeight: 700, color: "var(--primary)", letterSpacing: -0.3 }}>
@@ -195,6 +288,8 @@ export default function SurveyAnswerPage({
                 <img
                   src={question.image_url}
                   alt="题目图片"
+                  loading="lazy"
+                  decoding="async"
                   style={{ width: "100%", maxHeight: "40vh", objectFit: "cover", borderRadius: "var(--radius-sm)", cursor: "pointer", border: "1px solid var(--border)" }}
                   onClick={() => setZoomImg(question.image_url)}
                 />

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSurvey } from "@/lib/db/surveys";
-import { getStats } from "@/lib/db/responses";
-import { getQuestions, sanitizeQuestion } from "@/lib/db/questions";
+import { getStats, getQuestionStats } from "@/lib/db/responses";
+import { getQuestions, getQuestion, sanitizeQuestion } from "@/lib/db/questions";
 
 function checkOwnership(survey: { user_id: string | null } | null, req: NextRequest): NextResponse | null {
   if (!survey) {
@@ -23,6 +23,17 @@ export async function GET(
   const survey = await getSurvey(id);
   const err = checkOwnership(survey, req);
   if (err) return err;
+
+  // 单题懒加载：?question_id=xxx
+  const questionId = req.nextUrl.searchParams.get("question_id");
+  if (questionId) {
+    const q = await getQuestion(questionId);
+    if (!q || q.survey_id !== id) {
+      return NextResponse.json({ error: "题目不存在" }, { status: 404 });
+    }
+    const stats = await getQuestionStats(questionId);
+    return NextResponse.json({ id: questionId, stats });
+  }
 
   const stats = await getStats(id);
   const questions = (await getQuestions(id)).map(sanitizeQuestion);

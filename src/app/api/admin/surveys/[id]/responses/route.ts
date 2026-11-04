@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSurvey } from "@/lib/db/surveys";
-import { getSubmissions, deleteSubmission, clearResponses } from "@/lib/db/responses";
+import { getSubmissionsPaged, deleteSubmission, clearResponses } from "@/lib/db/responses";
 
 function checkOwnership(survey: { user_id: string | null } | null, req: NextRequest): NextResponse | null {
   if (!survey) {
@@ -23,8 +23,11 @@ export async function GET(
   const err = checkOwnership(survey, req);
   if (err) return err;
 
-  const submissions = await getSubmissions(id);
-  return NextResponse.json(submissions);
+  const sp = req.nextUrl.searchParams;
+  const page = Math.max(1, parseInt(sp.get("page") ?? "1") || 1);
+  const pageSize = Math.min(200, Math.max(1, parseInt(sp.get("page_size") ?? "20") || 20));
+  const { rows, total } = await getSubmissionsPaged(id, pageSize, (page - 1) * pageSize);
+  return NextResponse.json({ submissions: rows, total, page, page_size: pageSize });
 }
 
 export async function DELETE(

@@ -63,7 +63,8 @@ export async function submitBulk(
   }
 }
 
-/** 按人分组的所有提交 */
+/** 按人分组的所有提交。answers 以 question_id 为键——
+ *  用标题作键会让同名题目的答案互相覆盖 */
 export interface SubmissionRow {
   submission_id: string;
   submitted_at: string;
@@ -72,12 +73,6 @@ export interface SubmissionRow {
 
 export async function getSubmissions(surveyId: string): Promise<SubmissionRow[]> {
   const db = await getDb();
-  const [qRows] = await db.execute(
-    "SELECT id, title FROM questions WHERE survey_id = ? ORDER BY `order` ASC",
-    [surveyId]
-  );
-  const questions = qRows as Array<{ id: string; title: string }>;
-
   const [all] = await db.execute(
     `SELECT r.submission_id, r.question_id, r.value, r.submitted_at
      FROM responses r WHERE r.survey_id = ? AND r.submission_id != ''
@@ -91,9 +86,7 @@ export async function getSubmissions(surveyId: string): Promise<SubmissionRow[]>
     submitted_at: string;
   }>;
 
-  const qMap = new Map(questions.map((q) => [q.id, q.title]));
   const grouped = new Map<string, SubmissionRow>();
-
   for (const row of rows) {
     if (!grouped.has(row.submission_id)) {
       grouped.set(row.submission_id, {
@@ -102,11 +95,89 @@ export async function getSubmissions(surveyId: string): Promise<SubmissionRow[]>
         answers: {},
       });
     }
-    const title = qMap.get(row.question_id) ?? row.question_id;
-    grouped.get(row.submission_id)!.answers[title] = row.value;
+    grouped.get(row.submission_id)!.answers[row.question_id] = row.value;
   }
 
   return Array.from(grouped.values());
+}
+
+/** 分页获取提交（按人），并返回总人数 */
+export async function getSubmissionsPaged(
+  surveyId: string,
+  limit: number,
+  offset: number
+): Promise<{ rows: SubmissionRow[]; total: number }> {
+  const db = await getDb();
+
+  const [cntRows] = await db.execute(
+    `SELECT COUNT(DISTINCT submission_id) AS total
+     FROM responses WHERE survey_id = ? AND submission_id != ''`,
+    [surveyId]
+  );
+  const total = Number((cntRows as Array<{ total: number }>)[0]?.total ?? 0);
+
+  // LIMIT/OFFSET 在预处理语句里绑定不可靠，此处入参已在路由层 parseInt+钳位，直接内插
+  const [pageRows] = await db.execute(
+    `SELECT submission_id, MAX(submitted_at) AS submitted_at
+     FROM responses
+     WHERE survey_id = ? AND submission_id != ''
+     GROUP BY submission_id
+     ORDER BY submitted_at DESC
+     LIMIT ${limit} OFFSET ${offset}`
+  );
+  const pageIds = pageRows as Array<{ submission_id: string; submitted_at: string }>;
+  if (pageIds.length === 0) return { rows: [], total };
+
+  const placeholders = pageIds.map(() => "?").join(",");
+  const [ansRows] = await db.execute(
+    `SELECT submission_id, question_id, value
+     FROM responses
+     WHERE survey_id = ? AND submission_id IN (${placeholders})`,
+    [surveyId, ...pageIds.map((p) => p.submission_id)]
+  );
+  const answers = ansRows as Array<{
+    submission_id: string;
+    question_id: string;
+    value: string;
+  }>;
+
+  const grouped = new Map<string, SubmissionRow>();
+  for (const p of pageIds) {
+    grouped.set(p.submission_id, {
+      submission_id: p.submission_id,
+      submitted_at: p.submitted_at,
+      answers: {},
+    });
+  }
+  for (const row of answers) {
+    const sub = grouped.get(row.submission_id);
+    if (!sub) continue;
+    sub.answers[row.question_id] = row.value;
+  }
+
+  return { rows: Array.from(grouped.values()), total };
+}
+
+/** 单题统计（数据页按题懒加载用） */
+export async function getQuestionStats(
+  questionId: string
+): Promise<{ total: number; values: Record<string, number> }> {
+  const db = await getDb();
+  const [rows] = await db.execute(
+    `SELECT value, COUNT(*) AS count FROM responses
+     WHERE question_id = ?
+     GROUP BY value ORDER BY count DESC`,
+    [questionId]
+  );
+  const list = rows as Array<{ value: string; count: number }>;
+
+  const values: Record<string, number> = {};
+  let total = 0;
+  for (const r of list) {
+    values[r.value] = Number(r.count);
+    total += Number(r.count);
+  }
+  return { total, values };
 }
 
 export async function getResponses(
@@ -184,16 +255,31 @@ export async function clearResponses(surveyId: string): Promise<boolean> {
   return (result as any).affectedRows > 0;
 }
 
-/** 导出：每人一行，列 = 题目 + 提交时间 */
+/** 导出：每人一行，列 = 题目 + 提交时间。
+ *  内部按 question_id 关联答案，同名题目的列头自动加序号区分 */
 export async function getExportRows(
   surveyId: string
 ): Promise<Array<Record<string, string>>> {
   const db = await getDb();
   const [qRows] = await db.execute(
-    "SELECT * FROM questions WHERE survey_id = ? ORDER BY `order` ASC",
+    "SELECT id, title FROM questions WHERE survey_id = ? ORDER BY `order` ASC",
     [surveyId]
   );
   const questions = qRows as Array<{ id: string; title: string }>;
+
+  // 题目列表为空时补一个占位标题，避免导出全空列
+  const titleCount = new Map<string, number>();
+  for (const q of questions) {
+    titleCount.set(q.title, (titleCount.get(q.title) ?? 0) + 1);
+  }
+  const seen = new Map<string, number>();
+  const headers = questions.map((q) => {
+    const base = q.title || q.id;
+    if ((titleCount.get(q.title) ?? 1) <= 1 && base !== "") return base;
+    const n = (seen.get(q.title) ?? 0) + 1;
+    seen.set(q.title, n);
+    return `${base}(${n})`;
+  });
 
   const submissions = await getSubmissions(surveyId);
 
@@ -202,9 +288,9 @@ export async function getExportRows(
       "提交编号": sub.submission_id,
       "提交时间": sub.submitted_at,
     };
-    for (const q of questions) {
-      row[q.title] = sub.answers[q.title] ?? "";
-    }
+    questions.forEach((q, i) => {
+      row[headers[i]] = sub.answers[q.id] ?? "";
+    });
     return row;
   });
 }

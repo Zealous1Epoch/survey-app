@@ -46,18 +46,21 @@ export async function PUT(
   const body = await req.json();
   const { title, description, redirect_url, questions } = body;
 
-  await updateSurvey(id, { title, description, redirect_url });
-
-  // 按题目 id 做 diff（update/insert/delete），绝不整表重建——
-  // questions 上有 responses 的外键级联，删题重建会级联删光答卷
+  // 先做全部校验再落库，避免 400 时标题已被改掉而题目未变的半成功状态
+  const VALID_TYPES = ["choice", "multi", "text", "rating"];
   if (questions && Array.isArray(questions)) {
-    const VALID_TYPES = ["choice", "multi", "text", "rating"];
     for (const q of questions) {
       if (!VALID_TYPES.includes(q.type)) {
         return NextResponse.json({ error: "无效的题目类型" }, { status: 400 });
       }
     }
+  }
 
+  await updateSurvey(id, { title, description, redirect_url });
+
+  // 按题目 id 做 diff（update/insert/delete），绝不整表重建——
+  // questions 上有 responses 的外键级联，删题重建会级联删光答卷
+  if (questions && Array.isArray(questions)) {
     const db = await getDb();
     const conn = await db.getConnection();
     try {

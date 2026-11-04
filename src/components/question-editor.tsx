@@ -1,7 +1,7 @@
 "use client";
 
 import type { QuestionType, QuestionData } from "@/lib/db/questions";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 interface Props {
   questions: QuestionData[];
@@ -17,15 +17,38 @@ const typeLabels: Record<QuestionType, string> = {
 
 export default function QuestionEditor({ questions, onChange }: Props) {
   const fileRefs = useRef<Map<number, HTMLInputElement>>(new Map());
+  const [urlDrafts, setUrlDrafts] = useState<Record<string, string>>({});
+
+  const newQuestion = (): QuestionData => ({
+    id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `q_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    type: "choice",
+    title: "",
+    options: [""],
+    required: true,
+  });
+
   const add = () => {
-    onChange([
-      ...questions,
-      { type: "choice", title: "", options: [""], required: true },
-    ]);
+    onChange([...questions, newQuestion()]);
+  };
+
+  const insertAbove = (i: number) => {
+    const updated = [...questions];
+    updated.splice(i, 0, newQuestion());
+    onChange(updated);
   };
 
   const remove = (i: number) => {
+    const q = questions[i];
+    if (q.title.trim() && !confirm(`确定删除第 ${i + 1} 题「${q.title.trim().slice(0, 20)}」？`)) return;
     onChange(questions.filter((_, idx) => idx !== i));
+  };
+
+  const move = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= questions.length) return;
+    const updated = [...questions];
+    [updated[i], updated[j]] = [updated[j], updated[i]];
+    onChange(updated);
   };
 
   const update = (i: number, data: Partial<QuestionData>) => {
@@ -60,9 +83,14 @@ export default function QuestionEditor({ questions, onChange }: Props) {
   const handleImageUpload = async (qi: number, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    const res = await fetch("/api/survey-admin/upload", { method: "POST", body: formData });
-    const data = await res.json();
-    if (data.url) update(qi, { image_url: data.url });
+    try {
+      const res = await fetch("/api/survey-admin/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (res.ok && data.url) update(qi, { image_url: data.url });
+      else alert(data.error || "图片上传失败，请重试");
+    } catch {
+      alert("图片上传失败，请检查网络后重试");
+    }
   };
 
   const removeImage = (qi: number) => {
@@ -99,7 +127,7 @@ export default function QuestionEditor({ questions, onChange }: Props) {
       <div className="space-y-3">
         {questions.map((q, qi) => (
           <div
-            key={qi}
+            key={q.id ?? qi}
             className="rounded-lg border p-3 sm:p-4 animate-in"
             style={{
               borderColor: "var(--border)",
@@ -107,6 +135,22 @@ export default function QuestionEditor({ questions, onChange }: Props) {
               animationDelay: `${qi * 0.03}s`,
             }}
           >
+            {/* 在此题前插入 */}
+            <div className="mb-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => insertAbove(qi)}
+                className="flex items-center gap-1 text-xs transition-colors"
+                style={{ color: "var(--accent)" }}
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                此处插入
+              </button>
+              <span className="flex-1 h-px" style={{ background: "var(--border)" }} />
+            </div>
+
             {/* Row 1: index + type + required + delete — 小屏堆叠 */}
             <div className="mb-3 flex flex-wrap items-center gap-2 sm:gap-3">
               <span
@@ -133,13 +177,39 @@ export default function QuestionEditor({ questions, onChange }: Props) {
                 />
                 必填
               </label>
-              <button
-                type="button"
-                onClick={() => remove(qi)}
-                className="btn-danger ml-auto text-xs"
-              >
-                删除
-              </button>
+              <div className="ml-auto flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => move(qi, -1)}
+                  disabled={qi === 0}
+                  aria-label="上移"
+                  className="rounded p-1.5 transition-colors hover:bg-black/5 disabled:opacity-30"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M3.5 9L7 5.5 10.5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => move(qi, 1)}
+                  disabled={qi === questions.length - 1}
+                  aria-label="下移"
+                  className="rounded p-1.5 transition-colors hover:bg-black/5 disabled:opacity-30"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M3.5 5L7 8.5 10.5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove(qi)}
+                  className="btn-danger text-xs"
+                >
+                  删除
+                </button>
+              </div>
             </div>
 
             {/* Title */}
@@ -245,9 +315,18 @@ export default function QuestionEditor({ questions, onChange }: Props) {
                   </div>
                   <input
                     type="text"
-                    value=""
+                    value={urlDrafts[q.id ?? `qi_${qi}`] ?? ""}
                     onChange={(e) => {
-                      if (e.target.value) update(qi, { image_url: e.target.value });
+                      const k = q.id ?? `qi_${qi}`;
+                      setUrlDrafts((p) => ({ ...p, [k]: e.target.value }));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const k = q.id ?? `qi_${qi}`;
+                        const v = (urlDrafts[k] ?? "").trim();
+                        if (v) { update(qi, { image_url: v }); setUrlDrafts((p) => ({ ...p, [k]: "" })); }
+                      }
                     }}
                     placeholder="粘贴图片 URL"
                     className="input-field flex-1 text-xs"
@@ -267,6 +346,22 @@ export default function QuestionEditor({ questions, onChange }: Props) {
             />
           </div>
         ))}
+
+        {questions.length > 0 && (
+          <div className="flex items-center gap-2 py-2">
+            <button
+              type="button"
+              onClick={() => insertAbove(questions.length)}
+              className="flex items-center gap-1 mx-auto text-xs transition-colors"
+              style={{ color: "var(--accent)" }}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              在末尾添加题目
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
