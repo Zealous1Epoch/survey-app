@@ -15,25 +15,33 @@ export default function EditSurveyPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     fetch(`/api/admin/surveys/${id}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (r.status === 401) throw new Error("密钥已失效，请重新登录");
+        if (!r.ok) throw new Error(`加载失败（${r.status}）`);
+        return r.json();
+      })
       .then((data) => {
         setTitle(data.title);
         setDescription(data.description);
         setRedirectUrl(data.redirect_url);
         setQuestions(
-          data.questions.map((q: { type: string; title: string; options: string[]; required: boolean; redirect_url: string; order: number }) => ({
+          data.questions.map((q: { id: string; type: string; title: string; options: any[]; required: boolean; redirect_url: string; image_url: string; order: number }) => ({
+            id: q.id,
             type: q.type,
             title: q.title,
-            options: q.options,
+            options: (q.options ?? []).map((o) => typeof o === "string" ? { label: o, limit: 0 } : o as { label: string; limit: number }),
             required: q.required,
             redirect_url: q.redirect_url,
+            image_url: q.image_url ?? "",
             order: q.order,
           }))
         );
       })
+      .catch((e) => setLoadError(e.message || "加载失败，请重试"))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -56,7 +64,7 @@ export default function EditSurveyPage() {
         questions: questions.map((q) => ({
           ...q,
           title: q.title.trim(),
-          options: q.options?.filter((o) => o.trim()) ?? [],
+          options: q.options?.filter((o) => (typeof o === "string" ? o : o.label).trim()) ?? [],
         })),
       }),
     });
@@ -76,6 +84,17 @@ export default function EditSurveyPage() {
         <div className="space-y-4">
           <div className="card animate-pulse" style={{ height: 200 }} />
           <div className="card animate-pulse" style={{ height: 300 }} />
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <div className="card py-12 text-center">
+          <p className="mb-4 text-sm font-medium" style={{ color: "var(--accent)" }}>{loadError}</p>
+          <button onClick={() => window.location.reload()} className="btn-secondary text-sm py-2 px-4">重试</button>
         </div>
       </div>
     );

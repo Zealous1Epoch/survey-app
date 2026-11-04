@@ -8,11 +8,17 @@ import type { SurveyWithCounts } from "@/lib/db/surveys";
 export default function AdminPage() {
   const [surveys, setSurveys] = useState<SurveyWithCounts[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const fetchSurveys = () => {
     fetch("/api/admin/surveys")
-      .then((r) => r.json())
+      .then((r) => {
+        if (r.status === 401) throw new Error("密钥已失效，请重新登录");
+        if (!r.ok) throw new Error(`加载失败（${r.status}）`);
+        return r.json();
+      })
       .then(setSurveys)
+      .catch((e) => setError(e.message || "加载失败，请重试"))
       .finally(() => setLoading(false));
   };
 
@@ -22,7 +28,11 @@ export default function AdminPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("确定删除此问卷？所有题目和回答数据将被删除。")) return;
-    await fetch(`/api/admin/surveys/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/surveys/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      alert("删除失败，请重试");
+      return;
+    }
     fetchSurveys();
   };
 
@@ -51,6 +61,16 @@ export default function AdminPage() {
             <div key={i} className="card animate-pulse" style={{ height: 56 }} />
           ))}
         </div>
+      ) : error ? (
+        <div className="card py-12 text-center">
+          <p className="mb-4 text-sm font-medium" style={{ color: "var(--accent)" }}>{error}</p>
+          <div className="flex justify-center gap-2">
+            <button onClick={() => { setError(""); setLoading(true); fetchSurveys(); }} className="btn-secondary text-sm py-2 px-4">重试</button>
+            {error.includes("密钥") && (
+              <button onClick={() => { document.cookie = "admin_token=; path=/; max-age=0"; window.location.reload(); }} className="btn-primary text-sm py-2 px-4">重新登录</button>
+            )}
+          </div>
+        </div>
       ) : surveys.length === 0 ? (
         <div className="card py-16 text-center" style={{ background: "var(--bg-subtle)", border: "1px dashed var(--border)" }}>
           <FileText size={48} strokeWidth={1} className="mb-4" style={{ color: "var(--text-muted)" }} />
@@ -69,8 +89,8 @@ export default function AdminPage() {
           {surveys.map((s, i) => (
             <div
               key={s.id}
-              className={`card animate-in animate-in-delay-${i + 1}`}
-              style={{ padding: "1rem" }}
+              className="card animate-in"
+              style={{ padding: "1rem", animationDelay: `${Math.min(i, 8) * 60}ms` }}
             >
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold" style={{ background: "var(--bg-subtle)", color: "var(--text-secondary)" }}>

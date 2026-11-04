@@ -6,3 +6,11 @@ data/*.db-wal
 .superpowers/
 .vercel
 .env
+.DS_Store
+wrangler.jsonc
+.wrangler/
+.open-next/
+tsconfig.tsbuildinfo
+data/backups/
+dead-code-backup-*.tar.gz
+next-env.d.ts

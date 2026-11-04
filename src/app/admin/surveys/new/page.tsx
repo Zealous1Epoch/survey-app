@@ -33,7 +33,7 @@ export default function NewSurveyPage() {
         questions: questions.map((q) => ({
           ...q,
           title: q.title.trim(),
-          options: q.options?.filter((o) => o.trim()) ?? [],
+          options: q.options?.filter((o) => (typeof o === "string" ? o : o.label).trim()) ?? [],
         })),
       }),
     });

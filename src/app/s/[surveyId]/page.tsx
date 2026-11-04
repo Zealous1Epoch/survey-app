@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useRef } from "react";
+import QuestionBadge from "@/components/question-badge";
+import AnswerInput from "@/components/answer-input";
+import QuestionImage from "@/components/question-image";
+
+type OptionItem = { label: string; limit: number; remaining?: number };
 
 interface QuestionData {
   id: string;
   type: string;
   title: string;
-  options: string[];
+  options: (string | OptionItem)[];
   required: boolean;
   redirect_url: string;
   image_url: string;
@@ -35,17 +40,79 @@ export default function SurveyAnswerPage({
   const [done, setDone] = useState(false);
   const [zoomImg, setZoomImg] = useState<string | null>(null);
   const [animKey, setAnimKey] = useState(0);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const autoNextTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const draftKey = `survey_draft_${surveyId}`;
 
   useEffect(() => {
     fetch(`/api/s/${surveyId}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.error) setError(data.error);
-        else setSurvey(data);
+        else {
+          setSurvey(data);
+          // 恢复上次未提交的草稿（仅保留仍存在的题目答案）
+          try {
+            const raw = localStorage.getItem(draftKey);
+            if (raw) {
+              const draft = JSON.parse(raw);
+              const ids = new Set((data.questions as QuestionData[]).map((q) => q.id));
+              const clean: Record<string, string> = {};
+              for (const [k, v] of Object.entries(draft.values ?? {})) {
+                if (ids.has(k)) clean[k] = v as string;
+              }
+              if (Object.keys(clean).length > 0) {
+                setValues(clean);
+                setStep(Math.min(Math.max(0, draft.step ?? 0), (data.questions?.length ?? 1) - 1));
+                setDraftRestored(true);
+              }
+            }
+          } catch { /* 草稿损坏则忽略 */ }
+        }
       })
       .catch(() => setError("加载失败"))
       .finally(() => setLoading(false));
-  }, [surveyId]);
+  }, [surveyId, draftKey]);
+
+  // 答案变化时写入草稿
+  useEffect(() => {
+    if (!survey || done) return;
+    try {
+      localStorage.setItem(draftKey, JSON.stringify({ values, step }));
+    } catch { /* 存储满则忽略 */ }
+  }, [values, step, survey, done, draftKey]);
+
+  // 提交成功后清草稿
+  useEffect(() => {
+    if (done) { try { localStorage.removeItem(draftKey); } catch {} }
+  }, [done, draftKey]);
+
+  // 答题中途关页/刷新时挽留（已有作答且未提交）
+  const hasProgress = Object.values(values).some((v) => v !== "" && v !== "[]" && v !== "0");
+  useEffect(() => {
+    if (!hasProgress || done) return;
+    const onUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", onUnload);
+    return () => window.removeEventListener("beforeunload", onUnload);
+  }, [hasProgress, done]);
+
+  useEffect(() => () => { if (autoNextTimer.current) clearTimeout(autoNextTimer.current); }, []);
+
+  // 草稿恢复提示 3 秒后自动消失
+  useEffect(() => {
+    if (!draftRestored) return;
+    const t = setTimeout(() => setDraftRestored(false), 3000);
+    return () => clearTimeout(t);
+  }, [draftRestored]);
+
+  // lightbox 支持 ESC 关闭
+  useEffect(() => {
+    if (!zoomImg) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setZoomImg(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoomImg]);
 
   const question = survey?.questions[step] ?? null;
   const total = survey?.questions.length ?? 0;
@@ -62,12 +129,25 @@ export default function SurveyAnswerPage({
   const setVal = (qid: string, val: string) => {
     setValues((prev) => ({ ...prev, [qid]: val }));
     setFieldError("");
+    // 单选/限量单选/评分：选完自动跳下一题（最后一题不自动提交）
+    if (question && !isLast && (question.id === qid)) {
+      const auto = question.type === "choice" || question.type === "limited_choice" || question.type === "rating";
+      if (auto && val && val !== "0") {
+        if (autoNextTimer.current) clearTimeout(autoNextTimer.current);
+        autoNextTimer.current = setTimeout(() => {
+          setStep((s) => s + 1);
+          setAnimKey((k) => k + 1);
+        }, 400);
+      }
+    }
   };
 
   const handleNext = () => {
     if (!question) return;
+    if (autoNextTimer.current) { clearTimeout(autoNextTimer.current); autoNextTimer.current = null; }
     const v = getVal(question.id, question.type);
-    if (question.required && (!v || v === "" || v === "[]" || v === "0")) {
+    const empty = !v || v === "" || v === "[]" || (question.type === "rating" && v === "0");
+    if (question.required && empty) {
       setFieldError("此题为必填");
       return;
     }
@@ -81,6 +161,7 @@ export default function SurveyAnswerPage({
   };
 
   const handlePrev = () => {
+    if (autoNextTimer.current) { clearTimeout(autoNextTimer.current); autoNextTimer.current = null; }
     setStep((s) => Math.max(0, s - 1));
     setFieldError("");
     setAnimKey((k) => k + 1);
@@ -165,6 +246,18 @@ export default function SurveyAnswerPage({
 
   return (
     <div style={{ background: "var(--bg-primary)", minHeight: "100vh" }}>
+      {draftRestored && (
+        <div
+          style={{
+            position: "fixed", top: 12, left: "50%", transform: "translateX(-50%)", zIndex: 300,
+            padding: "0.5rem 1.25rem", borderRadius: 99, fontSize: 13, fontWeight: 500,
+            background: "var(--primary)", color: "#fff", boxShadow: "var(--shadow-lg)",
+            animation: "fadeIn 0.3s ease-out",
+          }}
+        >
+          已恢复上次未提交的作答
+        </div>
+      )}
       {/* Navbar */}
       <nav className="navbar">
         <span style={{ fontSize: 20, fontWeight: 700, color: "var(--primary)", letterSpacing: -0.3 }}>
@@ -195,10 +288,9 @@ export default function SurveyAnswerPage({
 
             {question?.image_url && (
               <div style={{ marginBottom: "1.5rem", marginTop: "1rem" }}>
-                <img
+                <QuestionImage
                   src={question.image_url}
                   alt="题目图片"
-                  style={{ width: "100%", maxHeight: "40vh", objectFit: "cover", borderRadius: "var(--radius-sm)", cursor: "pointer", border: "1px solid var(--border)" }}
                   onClick={() => setZoomImg(question.image_url)}
                 />
                 <p style={{ marginTop: 6, fontSize: 12, textAlign: "center", color: "var(--text-muted)" }}>
@@ -299,216 +391,3 @@ export default function SurveyAnswerPage({
   );
 }
 
-/* ---- Badge ---- */
-const badgeMap: Record<string, { text: string; color: string }> = {
-  choice: { text: "单选", color: "var(--accent)" },
-  multi: { text: "多选", color: "#7D9B8F" },
-  text: { text: "填空", color: "#8B7E6A" },
-  rating: { text: "评分", color: "#C8A45A" },
-};
-
-function QuestionBadge({ type }: { type: string }) {
-  const b = badgeMap[type] ?? { text: type, color: "var(--text-muted)" };
-  return <span className="badge">{b.text}</span>;
-}
-
-/* ---- Answer Input ---- */
-function AnswerInput({
-  question,
-  value,
-  onChange,
-}: {
-  question: QuestionData;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const t = question.type;
-
-  if (t === "choice") {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {question.options.map((opt, i) => {
-          const selected = value === opt;
-          return (
-            <div
-              key={i}
-              role="radio"
-              aria-checked={selected}
-              tabIndex={0}
-              className={selected ? "option-selected" : "option-default"}
-              style={{
-                display: "flex", alignItems: "center", gap: 12,
-                padding: "1rem 1.25rem",
-                border: selected ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
-                borderRadius: "var(--radius-sm)",
-                cursor: "pointer",
-                background: selected ? "var(--primary-light)" : "rgba(255,255,255,0.3)",
-                fontWeight: 500,
-                fontSize: 15,
-                transition: "all 0.3s ease-out",
-              }}
-              onClick={() => onChange(opt)}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onChange(opt); }}
-              onMouseEnter={(e) => {
-                if (!selected) {
-                  e.currentTarget.style.transform = "translateY(-4px)";
-                  e.currentTarget.style.boxShadow = "var(--shadow-lg)";
-                  e.currentTarget.style.borderColor = "var(--primary)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!selected) {
-                  e.currentTarget.style.transform = "";
-                  e.currentTarget.style.boxShadow = "";
-                  e.currentTarget.style.borderColor = "var(--border)";
-                }
-              }}
-            >
-              <div style={{
-                width: 22, height: 22, borderRadius: "50%",
-                border: selected ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                flexShrink: 0,
-                background: selected ? "var(--primary)" : "transparent",
-              }}>
-                {selected && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#fff" }} />}
-              </div>
-              <span>{opt}</span>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  if (t === "multi") {
-    const selected: string[] = JSON.parse(value || "[]");
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {question.options.map((opt, i) => {
-          const checked = selected.includes(opt);
-          const toggle = () => {
-            const next = checked ? selected.filter((v) => v !== opt) : [...selected, opt];
-            onChange(JSON.stringify(next));
-          };
-          return (
-            <div
-              key={i}
-              role="checkbox"
-              aria-checked={checked}
-              tabIndex={0}
-              style={{
-                display: "flex", alignItems: "center", gap: 12,
-                padding: "1rem 1.25rem",
-                border: checked ? "1.5px solid var(--accent-green)" : "1.5px solid var(--border)",
-                borderRadius: "var(--radius-sm)",
-                cursor: "pointer",
-                background: checked ? "var(--accent-green-light)" : "rgba(255,255,255,0.3)",
-                fontWeight: 500,
-                fontSize: 15,
-                transition: "all 0.3s ease-out",
-              }}
-              onClick={toggle}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") toggle(); }}
-              onMouseEnter={(e) => {
-                if (!checked) {
-                  e.currentTarget.style.transform = "translateY(-4px)";
-                  e.currentTarget.style.boxShadow = "var(--shadow-lg)";
-                  e.currentTarget.style.borderColor = "var(--accent-green)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!checked) {
-                  e.currentTarget.style.transform = "";
-                  e.currentTarget.style.boxShadow = "";
-                  e.currentTarget.style.borderColor = "var(--border)";
-                }
-              }}
-            >
-              <div style={{
-                width: 22, height: 22, borderRadius: 6,
-                border: checked ? "1.5px solid var(--accent-green)" : "1.5px solid var(--border)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                flexShrink: 0,
-                background: checked ? "var(--accent-green)" : "transparent",
-              }}>
-                {checked && (
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M2.5 6l2.5 2.5 4.5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
-              </div>
-              <span>{opt}</span>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  if (t === "text") {
-    return (
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="请输入你的回答..."
-        rows={4}
-        className="textarea-field"
-        style={{ minHeight: 120 }}
-      />
-    );
-  }
-
-  if (t === "rating") {
-    return (
-      <div>
-        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-          {[1, 2, 3, 4, 5].map((star) => {
-            const active = Number(value) >= star;
-            return (
-              <button
-                key={star}
-                type="button"
-                onClick={() => onChange(String(star))}
-                style={{
-                  width: 52, height: 52, borderRadius: "50%",
-                  border: active ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
-                  background: active ? "var(--primary)" : "rgba(255,255,255,0.4)",
-                  color: active ? "#fff" : "var(--text-primary)",
-                  fontSize: 18, fontWeight: 600,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  transition: "all 0.3s ease-out",
-                }}
-                onMouseEnter={(e) => {
-                  if (!active) {
-                    e.currentTarget.style.transform = "translateY(-4px)";
-                    e.currentTarget.style.boxShadow = "var(--shadow-lg)";
-                    e.currentTarget.style.borderColor = "var(--primary)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!active) {
-                    e.currentTarget.style.transform = "";
-                    e.currentTarget.style.boxShadow = "";
-                    e.currentTarget.style.borderColor = "var(--border)";
-                  }
-                }}
-                onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
-                onMouseUp={(e) => { e.currentTarget.style.transform = ""; }}
-              >
-                {star}
-              </button>
-            );
-          })}
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 12, color: "var(--text-muted)" }}>
-          <span>非常不满意</span>
-          <span>非常满意</span>
-        </div>
-      </div>
-    );
-  }
-
-  return null;
-}

@@ -1,34 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStats } from "@/lib/db/responses";
-import { getQuestions, sanitizeQuestion } from "@/lib/db/questions";
-import { getSurvey } from "@/lib/db/surveys";
-
-function getUserId(req: NextRequest): string | null {
-  return req.headers.get("x-user-id");
-}
+import { getStats, getQuestionStats } from "@/lib/db/responses";
+import { getQuestions, sanitizeQuestion, getQuestion } from "@/lib/db/questions";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const userId = getUserId(req);
+  try {
+    const { id } = await params;
 
-  const survey = getSurvey(id);
-  if (!survey) {
-    return NextResponse.json({ error: "问卷不存在" }, { status: 404 });
+    // 只统计单题：?question_id=xxx
+    const questionId = req.nextUrl.searchParams.get("question_id");
+    if (questionId) {
+      const q = getQuestion(questionId);
+      if (!q || q.survey_id !== id) {
+        return NextResponse.json({ error: "题目不存在" }, { status: 404 });
+      }
+      const stats = getQuestionStats(questionId);
+      return NextResponse.json({ id: questionId, stats });
+    }
+
+    const stats = getStats(id);
+    const questions = getQuestions(id).map(sanitizeQuestion);
+
+    const enriched = questions.map((q) => ({
+      ...q,
+      stats: stats[q.id] ?? { total: 0, values: {} },
+    }));
+
+    return NextResponse.json(enriched);
+  } catch (error) {
+    console.error("获取统计数据失败:", error);
+    return NextResponse.json({ error: "获取统计数据失败" }, { status: 500 });
   }
-  if (userId && survey.owner_id !== userId) {
-    return NextResponse.json({ error: "无权访问" }, { status: 403 });
-  }
-
-  const stats = getStats(id);
-  const questions = getQuestions(id).map(sanitizeQuestion);
-
-  const enriched = questions.map((q) => ({
-    ...q,
-    stats: stats[q.id] ?? { total: 0, values: {} },
-  }));
-
-  return NextResponse.json(enriched);
 }

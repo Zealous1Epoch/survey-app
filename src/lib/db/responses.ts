@@ -28,10 +28,43 @@ export function submitResponse(
   const db = getDb();
   const id = uuid();
   const now = new Date().toISOString();
+  const sid = submissionId || uuid();
   db.prepare(
     "INSERT INTO responses (id, question_id, survey_id, submission_id, value, submitted_at) VALUES (?, ?, ?, ?, ?, ?)"
-  ).run(id, questionId, surveyId, submissionId ?? "", value, now);
-  return { id, question_id: questionId, survey_id: surveyId, submission_id: submissionId ?? "", value, submitted_at: now };
+  ).run(id, questionId, surveyId, sid, value, now);
+  return { id, question_id: questionId, survey_id: surveyId, submission_id: sid, value, submitted_at: now };
+}
+
+/** 带限额检查的单题提交（事务内原子操作） */
+export function submitWithLimitCheck(
+  surveyId: string,
+  questionId: string,
+  value: string,
+  limit: number,
+  submissionId?: string
+): { success: boolean; error?: string; response?: Response } {
+  const db = getDb();
+  const id = uuid();
+  const sid = submissionId || uuid();
+  const now = new Date().toISOString();
+
+  const result = db.transaction(() => {
+    const row = db
+      .prepare("SELECT COUNT(*) as cnt FROM responses WHERE question_id = ? AND value = ?")
+      .get(questionId, value) as { cnt: number };
+    if (row.cnt >= limit) {
+      return { success: false as const, error: "该选项已被选满，请选择其他选项" };
+    }
+    db.prepare(
+      "INSERT INTO responses (id, question_id, survey_id, submission_id, value, submitted_at) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run(id, questionId, surveyId, sid, value, now);
+    return {
+      success: true as const,
+      response: { id, question_id: questionId, survey_id: surveyId, submission_id: sid, value, submitted_at: now },
+    };
+  })();
+
+  return result;
 }
 
 /** Bulk submit: all answers for one person in one go */
@@ -55,6 +88,40 @@ export function submitBulk(
 
   insertAll();
   return submissionId;
+}
+
+/** 带限量检查的批量提交（事务内原子操作，避免竞态条件） */
+export function submitBulkWithLimitCheck(
+  surveyId: string,
+  answers: Array<{ questionId: string; value: string }>,
+  limitedChecks: Array<{ questionId: string; optionLabel: string; limit: number }>
+): { success: boolean; error?: string; submissionId?: string } {
+  const db = getDb();
+  const submissionId = uuid();
+  const now = new Date().toISOString();
+
+  const stmt = db.prepare(
+    "INSERT INTO responses (id, question_id, survey_id, submission_id, value, submitted_at) VALUES (?, ?, ?, ?, ?, ?)"
+  );
+
+  const result = db.transaction(() => {
+    // 在事务内检查限量
+    for (const check of limitedChecks) {
+      const row = db
+        .prepare("SELECT COUNT(*) as cnt FROM responses WHERE question_id = ? AND value = ?")
+        .get(check.questionId, check.optionLabel) as { cnt: number };
+      if (row.cnt >= check.limit) {
+        return { success: false as const, error: `"${check.optionLabel}" 已被选满，请选择其他选项` };
+      }
+    }
+    // 通过检查后批量写入
+    for (const a of answers) {
+      stmt.run(uuid(), a.questionId, surveyId, submissionId, a.value, now);
+    }
+    return { success: true as const, submissionId };
+  })();
+
+  return result;
 }
 
 /** Get all submissions grouped by person (pivot) */
@@ -95,10 +162,95 @@ export function getSubmissions(surveyId: string): SubmissionRow[] {
       });
     }
     const title = qMap.get(row.question_id) ?? row.question_id;
-    grouped.get(row.submission_id)!.answers[title] = row.value;
+    const key = title || row.question_id; // 空标题时用题目 ID 兜底
+    grouped.get(row.submission_id)!.answers[key] = row.value;
   }
 
   return Array.from(grouped.values());
+}
+
+/** 分页获取提交（按人），并返回总数 */
+export function getSubmissionsPaged(
+  surveyId: string,
+  limit: number,
+  offset: number
+): { rows: SubmissionRow[]; total: number } {
+  const db = getDb();
+  const total = (
+    db
+      .prepare(
+        `SELECT COUNT(DISTINCT submission_id) as cnt FROM responses WHERE survey_id = ? AND submission_id != ''`
+      )
+      .get(surveyId) as { cnt: number }
+  ).cnt;
+
+  const pageIds = db
+    .prepare(
+      `SELECT submission_id, MAX(submitted_at) as submitted_at
+       FROM responses
+       WHERE survey_id = ? AND submission_id != ''
+       GROUP BY submission_id
+       ORDER BY submitted_at DESC
+       LIMIT ? OFFSET ?`
+    )
+    .all(surveyId, limit, offset) as Array<{ submission_id: string; submitted_at: string }>;
+
+  if (pageIds.length === 0) return { rows: [], total };
+
+  const questions = db
+    .prepare("SELECT id, title FROM questions WHERE survey_id = ? ORDER BY \"order\" ASC")
+    .all(surveyId) as Array<{ id: string; title: string }>;
+  const qMap = new Map(questions.map((q) => [q.id, q.title]));
+
+  const placeholders = pageIds.map(() => "?").join(",");
+  const answers = db
+    .prepare(
+      `SELECT submission_id, question_id, value FROM responses
+       WHERE survey_id = ? AND submission_id IN (${placeholders})`
+    )
+    .all(surveyId, ...pageIds.map((p) => p.submission_id)) as Array<{
+    submission_id: string;
+    question_id: string;
+    value: string;
+  }>;
+
+  const grouped = new Map<string, SubmissionRow>();
+  for (const p of pageIds) {
+    grouped.set(p.submission_id, {
+      submission_id: p.submission_id,
+      submitted_at: p.submitted_at,
+      answers: {},
+    });
+  }
+  for (const row of answers) {
+    const sub = grouped.get(row.submission_id);
+    if (!sub) continue;
+    const title = qMap.get(row.question_id) ?? row.question_id;
+    const key = title || row.question_id;
+    sub.answers[key] = row.value;
+  }
+
+  return { rows: Array.from(grouped.values()), total };
+}
+
+/** 单题统计 */
+export function getQuestionStats(questionId: string): { total: number; values: Record<string, number> } {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT value, COUNT(*) as count FROM responses
+       WHERE question_id = ?
+       GROUP BY value ORDER BY count DESC`
+    )
+    .all(questionId) as Array<{ value: string; count: number }>;
+
+  const values: Record<string, number> = {};
+  let total = 0;
+  for (const r of rows) {
+    values[r.value] = r.count;
+    total += r.count;
+  }
+  return { total, values };
 }
 
 export function getResponses(
@@ -171,6 +323,15 @@ export function clearResponses(surveyId: string): boolean {
   return result.changes > 0;
 }
 
+/** 防止 Excel 公式注入：对以 =、+、-、@ 开头的值添加单引号前缀 */
+export function sanitizeExcelValue(value: string): string {
+  if (!value) return "";
+  if (/^[=+\-@]/.test(value)) {
+    return "'" + value;
+  }
+  return value;
+}
+
 /** Export: one row per person, columns = questions + submission time */
 export function getExportRows(
   surveyId: string
@@ -188,7 +349,8 @@ export function getExportRows(
       "提交时间": sub.submitted_at,
     };
     for (const q of questions) {
-      row[q.title] = sub.answers[q.title] ?? "";
+      const key = q.title || q.id; // 空标题时用题目 ID 兜底
+      row[key] = sanitizeExcelValue(sub.answers[key] ?? "");
     }
     return row;
   });

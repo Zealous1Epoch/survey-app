@@ -1,56 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSubmissions, deleteSubmission, clearResponses } from "@/lib/db/responses";
-import { getSurvey } from "@/lib/db/surveys";
-
-function getUserId(req: NextRequest): string | null {
-  return req.headers.get("x-user-id");
-}
-
-function checkOwnership(req: NextRequest, surveyId: string): NextResponse | null {
-  const userId = getUserId(req);
-  if (!userId) {
-    return NextResponse.json({ error: "未登录" }, { status: 401 });
-  }
-  const survey = getSurvey(surveyId);
-  if (!survey) {
-    return NextResponse.json({ error: "问卷不存在" }, { status: 404 });
-  }
-  if (survey.owner_id !== userId) {
-    return NextResponse.json({ error: "无权访问" }, { status: 403 });
-  }
-  return null;
-}
+import { getSubmissionsPaged, deleteSubmission, clearResponses } from "@/lib/db/responses";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const authError = checkOwnership(req, id);
-  if (authError) return authError;
-
-  const submissions = getSubmissions(id);
-  return NextResponse.json(submissions);
+  try {
+    const { id } = await params;
+    const sp = req.nextUrl.searchParams;
+    const page = Math.max(1, parseInt(sp.get("page") ?? "1") || 1);
+    const pageSize = Math.min(200, Math.max(1, parseInt(sp.get("page_size") ?? "50") || 50));
+    const { rows, total } = getSubmissionsPaged(id, pageSize, (page - 1) * pageSize);
+    return NextResponse.json({ submissions: rows, total, page, page_size: pageSize });
+  } catch (error) {
+    console.error("获取回答数据失败:", error);
+    return NextResponse.json({ error: "获取回答数据失败" }, { status: 500 });
+  }
 }
 
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const authError = checkOwnership(req, id);
-  if (authError) return authError;
+  try {
+    const { id } = await params;
+    const submissionId = req.nextUrl.searchParams.get("submission_id");
 
-  const submissionId = req.nextUrl.searchParams.get("submission_id");
-
-  if (submissionId) {
-    const ok = deleteSubmission(id, submissionId);
-    if (!ok) {
-      return NextResponse.json({ error: "回答不存在" }, { status: 404 });
+    if (submissionId) {
+      const ok = deleteSubmission(id, submissionId);
+      if (!ok) {
+        return NextResponse.json({ error: "回答不存在" }, { status: 404 });
+      }
+      return NextResponse.json({ success: true });
     }
-    return NextResponse.json({ success: true });
-  }
 
-  clearResponses(id);
-  return NextResponse.json({ success: true });
+    clearResponses(id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("删除回答失败:", error);
+    return NextResponse.json({ error: "删除回答失败" }, { status: 500 });
+  }
 }

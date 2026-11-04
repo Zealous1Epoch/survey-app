@@ -27,32 +27,64 @@ export default function SurveyDataPage() {
   const { id } = useParams<{ id: string }>();
   const [questions, setQuestions] = useState<QuestionInfo[]>([]);
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [stats, setStats] = useState<Record<string, StatsData>>({});
+  const [statsLoading, setStatsLoading] = useState(false);
   const [activeQ, setActiveQ] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [surveyTitle, setSurveyTitle] = useState("");
+  const [error, setError] = useState("");
+
+  const PAGE_SIZE = 20;
+
+  const check = async (r: Response) => {
+    if (r.status === 401) throw new Error("密钥已失效，请重新登录");
+    if (!r.ok) throw new Error(`加载失败（${r.status}）`);
+    return r.json();
+  };
+
+  const loadSubmissions = (p: number) => {
+    fetch(`/api/admin/surveys/${id}/responses?page=${p}&page_size=${PAGE_SIZE}`)
+      .then(check)
+      .then((data) => {
+        setSubmissions(data.submissions ?? []);
+        setTotal(data.total ?? 0);
+      })
+      .catch((e) => setError(e.message || "加载失败，请重试"));
+  };
 
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/admin/surveys/${id}`).then((r) => r.json()),
-      fetch(`/api/admin/surveys/${id}/stats`).then((r) => r.json()),
-      fetch(`/api/admin/surveys/${id}/responses`).then((r) => r.json()),
-    ])
-      .then(([survey, statsData, subs]) => {
+    fetch(`/api/admin/surveys/${id}`)
+      .then(check)
+      .then((survey) => {
         setSurveyTitle(survey.title);
         const qs = survey.questions ?? [];
         setQuestions(qs);
         if (qs.length > 0) setActiveQ(qs[0].id);
-        setSubmissions(subs);
-
-        const statsMap: Record<string, StatsData> = {};
-        statsData.forEach((q: { id: string; stats: StatsData }) => {
-          statsMap[q.id] = q.stats;
-        });
-        setStats(statsMap);
       })
+      .catch((e) => setError(e.message || "加载失败，请重试"))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (!loading) loadSubmissions(page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, loading]);
+
+  // 按题懒加载统计
+  useEffect(() => {
+    if (!activeQ || stats[activeQ]) return;
+    setStatsLoading(true);
+    fetch(`/api/admin/surveys/${id}/stats?question_id=${activeQ}`)
+      .then(check)
+      .then((data) => {
+        if (data.stats) setStats((prev) => ({ ...prev, [activeQ]: data.stats }));
+      })
+      .catch(() => {})
+      .finally(() => setStatsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeQ]);
 
   const handleExport = () => {
     window.open(`/api/admin/surveys/${id}/export`, "_blank");
@@ -60,23 +92,43 @@ export default function SurveyDataPage() {
 
   const handleDeleteSubmission = async (submissionId: string) => {
     if (!confirm("确定删除这条回答？")) return;
-    await fetch(`/api/admin/surveys/${id}/responses?submission_id=${submissionId}`, { method: "DELETE" });
-    setSubmissions((prev) => prev.filter((s) => s.submission_id !== submissionId));
+    const res = await fetch(`/api/admin/surveys/${id}/responses?submission_id=${submissionId}`, { method: "DELETE" });
+    if (!res.ok) { alert("删除失败，请重试"); return; }
+    if (submissions.length === 1 && page > 1) {
+      setPage((p) => p - 1); // 删掉本页最后一条时回退一页（触发重新加载）
+    } else {
+      loadSubmissions(page);
+    }
   };
 
   const handleClearAll = async () => {
     if (!confirm("确定清空该问卷的所有回答？此操作不可恢复。")) return;
-    await fetch(`/api/admin/surveys/${id}/responses`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/surveys/${id}/responses`, { method: "DELETE" });
+    if (!res.ok) { alert("清空失败，请重试"); return; }
     setSubmissions([]);
+    setTotal(0);
+    setStats({});
+    setPage(1);
   };
 
   const activeStats = activeQ ? stats[activeQ] : null;
+  const activeType = questions.find((q) => q.id === activeQ)?.type;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   if (loading) {
     return (
       <div className="space-y-4">
         <div className="card animate-pulse" style={{ height: 160 }} />
         <div className="card animate-pulse" style={{ height: 300 }} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="card py-12 text-center">
+        <p className="mb-4 text-sm font-medium" style={{ color: "var(--accent)" }}>{error}</p>
+        <button onClick={() => window.location.reload()} className="btn-secondary text-sm py-2 px-4">重试</button>
       </div>
     );
   }
@@ -101,7 +153,7 @@ export default function SurveyDataPage() {
               {surveyTitle}
             </h1>
             <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-              {submissions.length} 条回答
+              {total} 条回答
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -114,7 +166,7 @@ export default function SurveyDataPage() {
               </svg>
               导出
             </button>
-            {submissions.length > 0 && (
+            {total > 0 && (
               <button onClick={handleClearAll} className="btn-danger text-sm py-2 px-3">
                 清空
               </button>
@@ -148,16 +200,41 @@ export default function SurveyDataPage() {
           </div>
 
           {/* Active question stats */}
-          {activeStats && (
+          {(statsLoading || activeStats) && (
             <div className="card">
               <div className="mb-4 flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full" style={{ background: "var(--accent)" }} />
                 <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
-                  共 {activeStats.total} 条回答
+                  {activeStats ? `共 ${activeStats.total} 条回答` : "统计中..."}
                 </p>
               </div>
-              {activeStats.total === 0 ? (
+              {!activeStats ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="animate-pulse" style={{ height: 28, background: "var(--bg-subtle)", borderRadius: 8 }} />
+                  ))}
+                </div>
+              ) : activeStats.total === 0 ? (
                 <p className="py-6 text-center text-sm" style={{ color: "var(--text-muted)" }}>暂无回答</p>
+              ) : activeType === "text" ? (
+                /* 填空题按条列出答案，不画百分比条 */
+                <div className="space-y-2">
+                  {Object.entries(activeStats.values)
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 100)
+                    .map(([val, count], i) => (
+                      <div
+                        key={i}
+                        className="flex items-start justify-between gap-3 rounded-lg px-3 py-2 text-sm"
+                        style={{ background: "var(--bg-subtle)" }}
+                      >
+                        <span className="min-w-0 whitespace-pre-wrap break-words" style={{ color: "var(--text-primary)" }}>{val}</span>
+                        {count > 1 && (
+                          <span className="flex-shrink-0 text-xs" style={{ color: "var(--text-muted)" }}>×{count}</span>
+                        )}
+                      </div>
+                    ))}
+                </div>
               ) : (
                 <div className="space-y-3">
                   {Object.entries(activeStats.values)
@@ -245,15 +322,19 @@ export default function SurveyDataPage() {
                           className="px-5 py-3 font-medium sticky left-0 z-10"
                           style={{ color: "var(--text-muted)", background: "var(--bg-card)" }}
                         >
-                          {i + 1}
+                          {(page - 1) * PAGE_SIZE + i + 1}
                         </td>
-                        {questions.map((q) => (
-                          <td key={q.id} className="px-4 py-3 whitespace-nowrap">
-                            {sub.answers[q.title] ?? (
-                              <span style={{ color: "var(--text-muted)" }}>-</span>
-                            )}
-                          </td>
-                        ))}
+                        {questions.map((q) => {
+                          const rawAnswer = sub.answers[q.title] ?? "";
+                          const display = rawAnswer.length > 200 ? rawAnswer.slice(0, 200) + "..." : rawAnswer;
+                          return (
+                            <td key={q.id} className="px-4 py-3 whitespace-nowrap" title={rawAnswer.length > 200 ? rawAnswer : undefined}>
+                              {rawAnswer ? display : (
+                                <span style={{ color: "var(--text-muted)" }}>-</span>
+                              )}
+                            </td>
+                          );
+                        })}
                         <td className="px-4 py-3 whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>
                           {new Date(sub.submitted_at).toLocaleString("zh-CN", {
                             month: "short",
@@ -275,6 +356,33 @@ export default function SurveyDataPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {total > PAGE_SIZE && (
+              <div
+                className="flex items-center justify-between px-5 py-3"
+                style={{ borderTop: "1px solid var(--border-light)" }}
+              >
+                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  第 {page} / {totalPages} 页 · 共 {total} 人
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="btn-ghost text-xs py-1 px-3 disabled:opacity-40"
+                  >
+                    上一页
+                  </button>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    className="btn-ghost text-xs py-1 px-3 disabled:opacity-40"
+                  >
+                    下一页
+                  </button>
+                </div>
               </div>
             )}
           </div>

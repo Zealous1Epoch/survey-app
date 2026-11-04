@@ -19,26 +19,18 @@ export function getDb(): Database.Database {
   db.pragma("foreign_keys = ON");
 
   db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      username TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    );
-
     CREATE TABLE IF NOT EXISTS surveys (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
       description TEXT DEFAULT '',
       redirect_url TEXT DEFAULT '',
-      created_at TEXT NOT NULL,
-      owner_id TEXT DEFAULT NULL
+      created_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS questions (
       id TEXT PRIMARY KEY,
       survey_id TEXT NOT NULL,
-      type TEXT NOT NULL CHECK(type IN ('choice','multi','text','rating')),
+      type TEXT NOT NULL CHECK(type IN ('choice','multi','text','rating','limited_choice')),
       title TEXT NOT NULL,
       options TEXT DEFAULT '[]',
       required INTEGER DEFAULT 1,
@@ -60,8 +52,7 @@ export function getDb(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_questions_survey ON questions(survey_id);
     CREATE INDEX IF NOT EXISTS idx_responses_survey ON responses(survey_id);
     CREATE INDEX IF NOT EXISTS idx_responses_question ON responses(question_id);
-    CREATE INDEX IF NOT EXISTS idx_surveys_owner ON surveys(owner_id);
-  `);
+      `);
 
   // Migration: add image_url column if missing
   const qCols = db.pragma("table_info(questions)") as Array<{ name: string }>;
@@ -76,16 +67,32 @@ export function getDb(): Database.Database {
     db.exec(`CREATE INDEX IF NOT EXISTS idx_responses_submission ON responses(submission_id)`);
   }
 
-  // Migration: add owner_id column if missing (idempotent for SQLite)
-  try {
-    const sCols = db.pragma("table_info(surveys)") as Array<{ name: string }>;
-    if (!sCols.some((c) => c.name === "owner_id")) {
-      db.exec(`ALTER TABLE surveys ADD COLUMN owner_id TEXT DEFAULT NULL`);
-      db.exec(`CREATE INDEX IF NOT EXISTS idx_surveys_owner ON surveys(owner_id)`);
-    }
-  } catch {
-    // column may already exist
+  // Migration: expand question type CHECK constraint to include limited_choice
+  // 使用 user_version 避免依赖 SQL 字符串匹配
+  const version = db.pragma("user_version", { simple: true }) as number;
+  if (version < 1) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS questions_new (
+        id TEXT PRIMARY KEY,
+        survey_id TEXT NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('choice','multi','text','rating','limited_choice')),
+        title TEXT NOT NULL,
+        options TEXT DEFAULT '[]',
+        required INTEGER DEFAULT 1,
+        redirect_url TEXT DEFAULT '',
+        "order" INTEGER DEFAULT 0,
+        image_url TEXT DEFAULT '',
+        FOREIGN KEY (survey_id) REFERENCES surveys(id) ON DELETE CASCADE
+      );
+      INSERT INTO questions_new (id, survey_id, type, title, options, required, redirect_url, "order", image_url)
+        SELECT id, survey_id, type, title, options, required, redirect_url, "order", image_url FROM questions;
+      DROP TABLE questions;
+      ALTER TABLE questions_new RENAME TO questions;
+      CREATE INDEX IF NOT EXISTS idx_questions_survey ON questions(survey_id);
+    `);
+    db.pragma("user_version = 1");
   }
+
 
   return db;
 }

@@ -1,8 +1,8 @@
 "use client";
 
-import type { QuestionType, QuestionData } from "@/lib/db/questions";
-import { useRef } from "react";
-import { Plus, X, ImageIcon, ImagePlus } from "lucide-react";
+import type { QuestionType, QuestionData, OptionItem } from "@/lib/db/questions";
+import { useRef, useState } from "react";
+import { Plus, X, ImagePlus, ChevronUp, ChevronDown } from "lucide-react";
 
 interface Props {
   questions: QuestionData[];
@@ -14,12 +14,20 @@ const typeLabels: Record<QuestionType, string> = {
   multi: "多选",
   text: "填空",
   rating: "评分",
+  limited_choice: "限量单选",
 };
 
 export default function QuestionEditor({ questions, onChange }: Props) {
   const fileRefs = useRef<Map<number, HTMLInputElement>>(new Map());
+  const [urlDrafts, setUrlDrafts] = useState<Record<string, string>>({});
 
-  const newQuestion = () => ({ type: "choice" as QuestionType, title: "", options: [""], required: true });
+  const newQuestion = () => ({
+    id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `q_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    type: "choice" as QuestionType,
+    title: "",
+    options: [{ label: "", limit: 0 }],
+    required: true,
+  });
 
   const add = () => {
     onChange([...questions, newQuestion()]);
@@ -32,7 +40,17 @@ export default function QuestionEditor({ questions, onChange }: Props) {
   };
 
   const remove = (i: number) => {
+    const q = questions[i];
+    if (q.title.trim() && !confirm(`确定删除第 ${i + 1} 题「${q.title.trim().slice(0, 20)}」？`)) return;
     onChange(questions.filter((_, idx) => idx !== i));
+  };
+
+  const move = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= questions.length) return;
+    const updated = [...questions];
+    [updated[i], updated[j]] = [updated[j], updated[i]];
+    onChange(updated);
   };
 
   const update = (i: number, data: Partial<QuestionData>) => {
@@ -44,32 +62,44 @@ export default function QuestionEditor({ questions, onChange }: Props) {
 
   const addOption = (qi: number) => {
     const q = questions[qi];
-    update(qi, { options: [...(q.options ?? []), ""] });
+    const opts = [...(q.options ?? [])] as OptionItem[];
+    update(qi, { options: [...opts, { label: "", limit: 0 }] });
   };
 
-  const updateOption = (qi: number, oi: number, val: string) => {
-    const opts = [...(questions[qi].options ?? [])];
-    opts[oi] = val;
+  const updateOption = (qi: number, oi: number, label: string) => {
+    const opts = [...(questions[qi].options ?? [])] as OptionItem[];
+    opts[oi] = { ...opts[oi], label };
+    update(qi, { options: opts });
+  };
+
+  const updateOptionLimit = (qi: number, oi: number, limit: number) => {
+    const opts = [...(questions[qi].options ?? [])] as OptionItem[];
+    opts[oi] = { ...opts[oi], limit };
     update(qi, { options: opts });
   };
 
   const removeOption = (qi: number, oi: number) => {
-    const opts = questions[qi].options?.filter((_, idx) => idx !== oi) ?? [];
-    update(qi, { options: opts });
+    const opts = (questions[qi].options ?? []) as OptionItem[];
+    update(qi, { options: opts.filter((_, idx) => idx !== oi) });
   };
 
   const typeChange = (qi: number, type: QuestionType) => {
     const defaults: Partial<QuestionData> = { type };
-    defaults.options = type === "choice" || type === "multi" ? [""] : [];
+    defaults.options = type === "choice" || type === "multi" || type === "limited_choice" ? [{ label: "", limit: 0 }] : [];
     update(qi, defaults);
   };
 
   const handleImageUpload = async (qi: number, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
-    const data = await res.json();
-    if (data.url) update(qi, { image_url: data.url });
+    try {
+      const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (res.ok && data.url) update(qi, { image_url: data.url });
+      else alert(data.error || "图片上传失败，请重试");
+    } catch {
+      alert("图片上传失败，请检查网络后重试");
+    }
   };
 
   const removeImage = (qi: number) => {
@@ -104,7 +134,7 @@ export default function QuestionEditor({ questions, onChange }: Props) {
       <div className="space-y-3">
         {questions.map((q, qi) => (
           <div
-            key={qi}
+            key={q.id ?? qi}
             className="rounded-lg border p-3 sm:p-4 animate-in"
             style={{
               borderColor: "var(--border)",
@@ -152,14 +182,36 @@ export default function QuestionEditor({ questions, onChange }: Props) {
                 />
                 必填
               </label>
-              <button
-                type="button"
-                onClick={() => remove(qi)}
-                className="btn-danger text-xs py-1.5 px-3 ml-auto flex items-center gap-1"
-              >
-                <X size={12} />
-                删除
-              </button>
+              <div className="ml-auto flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => move(qi, -1)}
+                  disabled={qi === 0}
+                  aria-label="上移"
+                  className="rounded p-1.5 transition-colors hover:bg-black/5 disabled:opacity-30"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  <ChevronUp size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => move(qi, 1)}
+                  disabled={qi === questions.length - 1}
+                  aria-label="下移"
+                  className="rounded p-1.5 transition-colors hover:bg-black/5 disabled:opacity-30"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  <ChevronDown size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove(qi)}
+                  className="btn-danger text-xs py-1.5 px-3 flex items-center gap-1"
+                >
+                  <X size={12} />
+                  删除
+                </button>
+              </div>
             </div>
 
             {/* Title */}
@@ -171,34 +223,55 @@ export default function QuestionEditor({ questions, onChange }: Props) {
               className="input-field mb-3 text-base"
             />
 
-            {/* Options for choice/multi */}
-            {(q.type === "choice" || q.type === "multi") && (
+            {/* Options for choice/multi/limited_choice */}
+            {(q.type === "choice" || q.type === "multi" || q.type === "limited_choice") && (
               <div className="mb-3 space-y-2">
-                {(q.options ?? []).map((opt, oi) => (
-                  <div key={oi} className="flex items-center gap-2">
-                    <span
-                      className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-medium"
-                      style={{ background: "var(--bg-subtle)", color: "var(--text-muted)" }}
-                    >
-                      {String.fromCharCode(65 + oi)}
-                    </span>
-                    <input
-                      type="text"
-                      value={opt}
-                      onChange={(e) => updateOption(qi, oi, e.target.value)}
-                      placeholder={`选项 ${oi + 1}`}
-                      className="input-field flex-1 text-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeOption(qi, oi)}
-                      className="flex-shrink-0 rounded p-2 text-xs transition-colors hover:bg-red-50 hover:text-red-500"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
+                {(q.options ?? []).map((rawOpt, oi) => {
+                  const opt = rawOpt as OptionItem;
+                  return (
+                    <div key={oi} className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-medium"
+                        style={{ background: "var(--bg-subtle)", color: "var(--text-muted)" }}
+                      >
+                        {String.fromCharCode(65 + oi)}
+                      </span>
+                      <input
+                        type="text"
+                        value={opt.label ?? ""}
+                        onChange={(e) => updateOption(qi, oi, e.target.value)}
+                        placeholder={`选项 ${oi + 1}`}
+                        className="input-field flex-1 text-sm"
+                        style={{ minWidth: 120 }}
+                      />
+                      {q.type === "limited_choice" && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs flex-shrink-0" style={{ color: "var(--text-muted)" }}>上限</span>
+                          <input
+                            type="number"
+                            value={opt.limit || ""}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              updateOptionLimit(qi, oi, raw === "" ? 0 : Math.max(0, parseInt(raw) || 0));
+                            }}
+                            placeholder="不限"
+                            className="input-field text-sm"
+                            style={{ width: 64 }}
+                            min={0}
+                          />
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeOption(qi, oi)}
+                        className="flex-shrink-0 rounded p-2 text-xs transition-colors hover:bg-red-50 hover:text-red-500"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
                 <button
                   type="button"
                   onClick={() => addOption(qi)}
@@ -243,9 +316,18 @@ export default function QuestionEditor({ questions, onChange }: Props) {
                   <span className="text-xs hidden sm:inline" style={{ color: "var(--text-muted)" }}>或</span>
                   <input
                     type="text"
-                    value=""
+                    value={urlDrafts[q.id ?? `qi_${qi}`] ?? ""}
                     onChange={(e) => {
-                      if (e.target.value) update(qi, { image_url: e.target.value });
+                      const k = q.id ?? `qi_${qi}`;
+                      setUrlDrafts((p) => ({ ...p, [k]: e.target.value }));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const k = q.id ?? `qi_${qi}`;
+                        const v = (urlDrafts[k] ?? "").trim();
+                        if (v) { update(qi, { image_url: v }); setUrlDrafts((p) => ({ ...p, [k]: "" })); }
+                      }
                     }}
                     placeholder="粘贴图片 URL"
                     className="input-field flex-1 text-sm py-2"

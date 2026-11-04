@@ -5,6 +5,7 @@ echo "🚀 启动问卷月..."
 echo ""
 
 # Force kill all lingering processes
+pkill -9 -f "next start" 2>/dev/null || true
 pkill -9 -f "next dev" 2>/dev/null || true
 pkill -9 -f "cloudflared" 2>/dev/null || true
 sleep 2
@@ -13,10 +14,10 @@ sleep 2
 lsof -ti :3000 2>/dev/null | xargs kill -9 2>/dev/null || true
 sleep 1
 
-# Start dev server
-echo "  启动 Next.js..."
-npm run dev -- -p 3000 &
-DEV_PID=$!
+# Start production server
+echo "  启动 Next.js (生产模式)..."
+npm start -- -p 3000 &
+SERVER_PID=$!
 sleep 4
 
 # Wait until Next.js actually responds
@@ -32,15 +33,15 @@ done
 
 # Start named Cloudflare tunnel with custom domain
 echo "  启动 Cloudflare 隧道..."
-trap "kill \$DEV_PID 2>/dev/null; pkill -f 'cloudflared tunnel run' 2>/dev/null" EXIT
+trap "kill \$SERVER_PID 2>/dev/null; pkill -f 'cloudflared tunnel run' 2>/dev/null" EXIT
 
 cloudflared tunnel --config ~/.cloudflared/config.yml run survey-tunnel &
 TUNNEL_PID=$!
 
 echo ""
-echo "✅ 本地: http://localhost:3000"
-echo "✅ 公网: https://qanda.050423.xyz"
+echo "本地: http://localhost:3000"
+echo "公网: https://survey.050423.xyz"
 echo ""
 echo "  按 Ctrl+C 停止所有服务"
 
-wait $DEV_PID
+wait $SERVER_PID

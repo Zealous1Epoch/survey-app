@@ -1,43 +1,31 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { getSession } from "@/lib/sessions";
+import { NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_PATHS = [
-  "/admin/login",
-  "/admin/register",
-  "/api/auth/login",
-  "/api/auth/register",
-];
+/** 需要认证的路由前缀 */
+const PROTECTED_PREFIXES = ["/admin", "/api/admin"];
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
 
-  // Only handle /admin and /api/admin routes
-  if (!pathname.startsWith("/admin") && !pathname.startsWith("/api/admin")) {
+  // 检查是否是需要保护的路由
+  const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  if (!isProtected) return NextResponse.next();
+
+  // 从 cookie 或 Authorization header 获取 token
+  const token = req.cookies.get("admin_token")?.value
+    ?? req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+
+  // 与环境变量中的 ADMIN_TOKEN 比对
+  const adminToken = process.env.ADMIN_TOKEN;
+  if (adminToken && token === adminToken) {
     return NextResponse.next();
   }
 
-  // Allow public auth paths
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
-    return NextResponse.next();
+  // API 请求返回 401，页面请求重定向到 admin 首页（显示登录表单）
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.json({ error: "未授权" }, { status: 401 });
   }
 
-  // Validate session
-  const token = request.cookies.get("session_token")?.value ?? "";
-  const session = token ? await getSession(token) : null;
-
-  if (!session) {
-    const loginUrl = new URL("/admin/login", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // Pass userId to downstream handlers via header
-  const headers = new Headers(request.headers);
-  headers.set("x-user-id", session.userId);
-  headers.set("x-username", session.username);
-
-  return NextResponse.next({ request: { headers } });
+  return NextResponse.next();
 }
 
 export const config = {
