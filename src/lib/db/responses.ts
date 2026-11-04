@@ -123,7 +123,8 @@ export async function getSubmissionsPaged(
      WHERE survey_id = ? AND submission_id != ''
      GROUP BY submission_id
      ORDER BY submitted_at DESC
-     LIMIT ${limit} OFFSET ${offset}`
+     LIMIT ${limit} OFFSET ${offset}`,
+    [surveyId]
   );
   const pageIds = pageRows as Array<{ submission_id: string; submitted_at: string }>;
   if (pageIds.length === 0) return { rows: [], total };

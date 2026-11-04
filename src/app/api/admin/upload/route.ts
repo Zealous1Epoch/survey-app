@@ -42,17 +42,28 @@ export async function POST(req: NextRequest) {
       output = buffer;
     } else {
       // 统一压缩：最长边 1600px、WebP 质量 80，自动修正 EXIF 方向
+      const rawExt = file.name.split(".").pop()?.toLowerCase() ?? "";
+      const keepExt = ALLOWED_EXTENSIONS.has(rawExt) && rawExt !== "gif" ? rawExt : "jpg";
+      let ext = "webp";
       try {
-        output = await sharp(buffer)
+        const converted = await sharp(buffer)
           .rotate()
           .resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true })
           .webp({ quality: 80 })
           .toBuffer();
+        if (converted.length < buffer.length) {
+          output = converted;
+        } else {
+          // WebP 对图案化/小图可能反而变大：只缩不胀，保留原图
+          ext = keepExt;
+          output = buffer;
+        }
       } catch {
         // 无法解析的图像原样保存，不让上传失败
+        ext = keepExt;
         output = buffer;
       }
-      filename = `${uuid()}.webp`;
+      filename = `${uuid()}.${ext}`;
     }
 
     await writeFile(path.join(uploadsDir, filename), output);
