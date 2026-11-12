@@ -7,6 +7,8 @@ import type { SurveyWithCounts } from "@/lib/db/surveys";
 export default function AdminPage() {
   const [surveys, setSurveys] = useState<SurveyWithCounts[]>([]);
   const [loading, setLoading] = useState(true);
+  const [me, setMe] = useState<{ username: string; role: string } | null>(null);
+  const [creatorFilter, setCreatorFilter] = useState("all");
 
   const fetchSurveys = () => {
     fetch("/api/survey-admin/surveys")
@@ -17,7 +19,26 @@ export default function AdminPage() {
 
   useEffect(() => {
     fetchSurveys();
+    fetch("/api/survey-admin/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setMe)
+      .catch(() => setMe(null));
   }, []);
+
+  const isSuper = me?.role === "super_admin";
+  // 创建人分组计数（仅超管视角有跨用户数据）
+  const creators = (() => {
+    const map = new Map<string, { label: string; count: number }>();
+    for (const s of surveys) {
+      const key = s.user_id ?? "__orphan__";
+      const label = s.creator_name ?? "未归属";
+      const cur = map.get(key);
+      if (cur) cur.count += 1;
+      else map.set(key, { label, count: 1 });
+    }
+    return [...map.entries()].sort((a, b) => b[1].count - a[1].count);
+  })();
+  const visible = creatorFilter === "all" ? surveys : surveys.filter((s) => (s.user_id ?? "__orphan__") === creatorFilter);
 
   const handleDelete = async (id: string) => {
     if (!confirm("确定删除此问卷？所有题目和回答数据将被删除。")) return;
@@ -49,6 +70,36 @@ export default function AdminPage() {
         </Link>
       </div>
 
+      {!loading && isSuper && creators.length > 1 && (
+        <div className="mb-4 flex gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+          <button
+            onClick={() => setCreatorFilter("all")}
+            className="flex-shrink-0 rounded-md px-3 py-1.5 text-xs sm:text-sm font-medium transition-all"
+            style={
+              creatorFilter === "all"
+                ? { background: "var(--primary)", color: "#faf9f5" }
+                : { background: "var(--bg-subtle)", color: "var(--text-secondary)" }
+            }
+          >
+            全部 <span className="nums">{surveys.length}</span>
+          </button>
+          {creators.map(([key, { label, count }]) => (
+            <button
+              key={key}
+              onClick={() => setCreatorFilter(key)}
+              className="flex-shrink-0 rounded-md px-3 py-1.5 text-xs sm:text-sm font-medium transition-all"
+              style={
+                creatorFilter === key
+                  ? { background: "var(--primary)", color: "#faf9f5" }
+                  : { background: "var(--bg-subtle)", color: "var(--text-secondary)" }
+              }
+            >
+              {label} <span className="nums">{count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -70,7 +121,7 @@ export default function AdminPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {surveys.map((s, i) => (
+          {visible.map((s, i) => (
             <div
               key={s.id}
               className="card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-in"
@@ -94,6 +145,14 @@ export default function AdminPage() {
                     <span className="nums">{s.response_count} 条回答</span>
                     <span className="hidden sm:inline">·</span>
                     <span className="hidden sm:inline">{new Date(s.created_at).toLocaleDateString("zh-CN")}</span>
+                    {isSuper && (
+                      <span
+                        className="rounded-md px-1.5 py-0.5 text-[11px]"
+                        style={{ background: "var(--bg-subtle)", color: "var(--text-secondary)" }}
+                      >
+                        {s.creator_name ?? "未归属"}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

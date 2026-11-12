@@ -13,15 +13,16 @@ export interface Survey {
 export interface SurveyWithCounts extends Survey {
   question_count: number;
   response_count: number;
+  creator_name: string | null;
 }
 
-/** 获取问卷列表，可选按 userId 过滤 */
+/** 获取问卷列表，可选按 userId 过滤；带创建人用户名 */
 export async function getSurveys(userId?: string): Promise<SurveyWithCounts[]> {
   const db = await getDb();
-  let sql = `SELECT s.*,
+  let sql = `SELECT s.*, u.username as creator_name,
       (SELECT COUNT(*) FROM questions WHERE survey_id = s.id) as question_count,
       (SELECT COUNT(DISTINCT r.id) FROM responses r WHERE r.survey_id = s.id) as response_count
-     FROM surveys s`;
+     FROM surveys s LEFT JOIN users u ON u.id = s.user_id`;
   const params: string[] = [];
 
   if (userId) {
