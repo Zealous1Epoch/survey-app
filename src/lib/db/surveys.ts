@@ -6,6 +6,8 @@ export interface Survey {
   title: string;
   description: string;
   redirect_url: string;
+  payment_enabled: number;
+  payment_qr: string;
   user_id: string | null;
   created_at: string;
 }
@@ -62,6 +64,8 @@ export async function createSurvey(data: {
     title: data.title,
     description: data.description ?? "",
     redirect_url: data.redirect_url ?? "",
+    payment_enabled: 0,
+    payment_qr: "",
     user_id: data.userId,
     created_at: now,
   };
@@ -69,15 +73,23 @@ export async function createSurvey(data: {
 
 export async function updateSurvey(
   id: string,
-  data: { title?: string; description?: string; redirect_url?: string }
+  data: {
+    title?: string;
+    description?: string;
+    redirect_url?: string;
+    payment_enabled?: number;
+    payment_qr?: string;
+  }
 ): Promise<boolean> {
   const db = await getDb();
   const fields: string[] = [];
-  const values: (string | undefined)[] = [];
+  const values: (string | number | undefined)[] = [];
 
   if (data.title !== undefined) { fields.push("title = ?"); values.push(data.title); }
   if (data.description !== undefined) { fields.push("description = ?"); values.push(data.description); }
   if (data.redirect_url !== undefined) { fields.push("redirect_url = ?"); values.push(data.redirect_url); }
+  if (data.payment_enabled !== undefined) { fields.push("payment_enabled = ?"); values.push(data.payment_enabled); }
+  if (data.payment_qr !== undefined) { fields.push("payment_qr = ?"); values.push(data.payment_qr); }
 
   if (fields.length === 0) return false;
 

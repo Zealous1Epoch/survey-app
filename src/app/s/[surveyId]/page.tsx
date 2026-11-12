@@ -19,6 +19,8 @@ interface SurveyData {
   title: string;
   description: string;
   redirect_url: string;
+  payment_enabled?: number | boolean;
+  payment_qr?: string;
   questions: QuestionData[];
 }
 
@@ -271,7 +273,9 @@ export default function SurveyAnswerPage({
       const result = await res.json();
       if (result.success) {
         setDone(true);
-        if (result.redirect_url) {
+        // 收款码开启时留在收尾页展示二维码，不再跳走
+        const payOn = !!(survey?.payment_enabled && survey?.payment_qr);
+        if (result.redirect_url && !payOn) {
           setTimeout(() => { window.location.href = result.redirect_url; }, 1500);
         }
       } else {
@@ -371,7 +375,50 @@ export default function SurveyAnswerPage({
           <h2 className="text-xl font-bold mb-2" style={{ color: "var(--primary)" }}>提交成功</h2>
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>感谢你的回答</p>
           <p className="nums" style={{ marginTop: 8, fontSize: 13, color: "var(--text-muted)" }}>已收到 {answeredCount} / {total} 题的回答</p>
+          {survey.payment_enabled && survey.payment_qr && (
+            <div style={{ marginTop: "1.5rem" }}>
+              <img
+                src={survey.payment_qr}
+                alt=""
+                onClick={() => setZoomImg(survey.payment_qr ?? null)}
+                style={{
+                  width: 260, height: 260, objectFit: "contain",
+                  background: "#fff", border: "1px solid var(--border)",
+                  borderRadius: 6, cursor: "zoom-in",
+                }}
+              />
+            </div>
+          )}
         </div>
+        {zoomImg && (
+          <div
+            style={{
+              position: "fixed", inset: 0, zIndex: 200,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              padding: "1rem", background: "rgba(20,20,19,0.88)",
+            }}
+            onClick={() => setZoomImg(null)}
+          >
+            <button
+              onClick={() => setZoomImg(null)}
+              style={{
+                position: "absolute", top: 16, right: 16,
+                width: 36, height: 36, borderRadius: "50%",
+                background: "rgba(245,244,237,0.14)", color: "#f5f4ed",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                border: "none", cursor: "pointer", fontSize: 18,
+              }}
+            >
+              ✕
+            </button>
+            <img
+              src={zoomImg}
+              alt=""
+              style={{ maxHeight: "90vh", maxWidth: "90vw", borderRadius: 6, objectFit: "contain" }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
       </div>
     );
   }
