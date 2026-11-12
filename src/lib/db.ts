@@ -58,8 +58,6 @@ async function initTables(p: mysql.Pool): Promise<void> {
       title VARCHAR(500) NOT NULL,
       description TEXT,
       redirect_url VARCHAR(2000) DEFAULT '',
-      payment_enabled INT DEFAULT 0,
-      payment_qr VARCHAR(2000) DEFAULT '',
       created_at VARCHAR(30) NOT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
@@ -123,13 +121,5 @@ async function initTables(p: mysql.Pool): Promise<void> {
   if (!(sCols as any[]).some((c: any) => c.Field === "user_id")) {
     await p.execute(`ALTER TABLE surveys ADD COLUMN user_id VARCHAR(36) DEFAULT NULL`);
     try { await p.execute(`CREATE INDEX idx_surveys_user ON surveys(user_id)`); } catch (_) {}
-  }
-
-  // 迁移：提交后收款码展示（payment_enabled / payment_qr）
-  if (!(sCols as any[]).some((c: any) => c.Field === "payment_enabled")) {
-    await p.execute(`ALTER TABLE surveys ADD COLUMN payment_enabled INT DEFAULT 0`);
-  }
-  if (!(sCols as any[]).some((c: any) => c.Field === "payment_qr")) {
-    await p.execute(`ALTER TABLE surveys ADD COLUMN payment_qr VARCHAR(2000) DEFAULT ''`);
   }
 }

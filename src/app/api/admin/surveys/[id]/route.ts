@@ -45,7 +45,7 @@ export async function PUT(
   if (err) return err;
 
   const body = await req.json();
-  const { title, description, redirect_url, payment_enabled, payment_qr, questions } = body;
+  const { title, description, redirect_url, questions } = body;
 
   // 先做全部校验再落库，避免 400 时标题已被改掉而题目未变的半成功状态
   if (questions && Array.isArray(questions)) {
@@ -56,14 +56,7 @@ export async function PUT(
     }
   }
 
-  await updateSurvey(id, {
-    title,
-    description,
-    redirect_url,
-    // undefined = 调用方未传该字段，保持库中原值；传了才覆盖
-    payment_enabled: payment_enabled === undefined ? undefined : payment_enabled ? 1 : 0,
-    payment_qr: payment_qr === undefined ? undefined : String(payment_qr),
-  });
+  await updateSurvey(id, { title, description, redirect_url });
 
   // 按题目 id 做 diff（update/insert/delete），绝不整表重建——
   // questions 上有 responses 的外键级联，删题重建会级联删光答卷

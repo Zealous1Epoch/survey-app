@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import QuestionEditor from "@/components/question-editor";
 import type { QuestionData } from "@/lib/db/questions";
@@ -11,10 +11,6 @@ export default function EditSurveyPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [redirectUrl, setRedirectUrl] = useState("");
-  const [paymentEnabled, setPaymentEnabled] = useState(false);
-  const [paymentQr, setPaymentQr] = useState("");
-  const [uploadingQr, setUploadingQr] = useState(false);
-  const payFileRef = useRef<HTMLInputElement | null>(null);
   const [questions, setQuestions] = useState<QuestionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -31,8 +27,6 @@ export default function EditSurveyPage() {
         setTitle(data.title);
         setDescription(data.description ?? "");
         setRedirectUrl(data.redirect_url ?? "");
-        setPaymentEnabled(!!data.payment_enabled);
-        setPaymentQr(data.payment_qr ?? "");
         // 回填 id 供服务端 diff 定位存量题目；缺 id 会被当成新题重建
         setQuestions(
           data.questions.map((q: { id: string; type: string; title: string; options: string[] | { min?: number; max?: number }; required: boolean; image_url?: string; order: number }) => ({
@@ -66,8 +60,6 @@ export default function EditSurveyPage() {
         title: title.trim(),
         description,
         redirect_url: redirectUrl,
-        payment_enabled: paymentEnabled ? 1 : 0,
-        payment_qr: paymentEnabled ? paymentQr : "",
         questions: questions.map((q) => ({
           ...q,
           title: q.title.trim(),
@@ -84,23 +76,6 @@ export default function EditSurveyPage() {
       const data = await res.json();
       setError(data.error ?? "保存失败");
       setSaving(false);
-    }
-  };
-
-  const uploadQr = async (file: File) => {
-    setUploadingQr(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    try {
-      const res = await fetch("/api/survey-admin/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      if (res.ok && data.url) setPaymentQr(data.url);
-      else alert(data.error || "上传失败，请重试");
-    } catch {
-      alert("上传失败，请检查网络后重试");
-    } finally {
-      setUploadingQr(false);
-      if (payFileRef.current) payFileRef.current.value = "";
     }
   };
 
@@ -173,43 +148,6 @@ export default function EditSurveyPage() {
               onChange={(e) => setRedirectUrl(e.target.value)}
               className="input-field"
             />
-          </div>
-          <div style={{ borderTop: "1px solid var(--border)", paddingTop: "1.25rem" }}>
-            <label
-              className="mb-1.5 flex items-center gap-2 text-sm font-medium"
-              style={{ cursor: "pointer", userSelect: "none" }}
-            >
-              <input
-                type="checkbox"
-                checked={paymentEnabled}
-                onChange={(e) => setPaymentEnabled(e.target.checked)}
-                style={{ width: 16, height: 16, accentColor: "var(--primary)" }}
-              />
-              提交后展示收款码
-            </label>
-            {paymentEnabled && (
-              paymentQr ? (
-                <div className="mt-3 flex items-center gap-4">
-                  <img
-                    src={paymentQr}
-                    alt=""
-                    style={{ width: 96, height: 96, objectFit: "contain", border: "1px solid var(--border)", borderRadius: 6, background: "#fff" }}
-                  />
-                  <div className="flex gap-2">
-                    <label className="btn-secondary text-sm" style={{ cursor: uploadingQr ? "wait" : "pointer", opacity: uploadingQr ? 0.6 : 1 }}>
-                      {uploadingQr ? "上传中..." : "更换"}
-                      <input ref={payFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadQr(f); }} />
-                    </label>
-                    <button type="button" onClick={() => setPaymentQr("")} className="btn-secondary text-sm">移除</button>
-                  </div>
-                </div>
-              ) : (
-                <label className="btn-secondary mt-3 inline-block text-sm" style={{ cursor: uploadingQr ? "wait" : "pointer", opacity: uploadingQr ? 0.6 : 1 }}>
-                  {uploadingQr ? "上传中..." : "上传收款码"}
-                  <input ref={payFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadQr(f); }} />
-                </label>
-              )
-            )}
           </div>
         </div>
 
