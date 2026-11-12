@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSurveys, createSurvey } from "@/lib/db/surveys";
-import { createQuestion, QuestionType } from "@/lib/db/questions";
+import { createQuestion } from "@/lib/db/questions";
+import { VALID_QUESTION_TYPES } from "@/lib/question-types";
 
 export async function GET(req: NextRequest) {
   const userId = req.headers.get("x-user-id");
@@ -22,6 +23,14 @@ export async function POST(req: NextRequest) {
 
   if (!title || !title.trim()) {
     return NextResponse.json({ error: "标题不能为空" }, { status: 400 });
+  }
+
+  if (questions && Array.isArray(questions)) {
+    for (const q of questions) {
+      if (!VALID_QUESTION_TYPES.includes(q.type)) {
+        return NextResponse.json({ error: "无效的题目类型" }, { status: 400 });
+      }
+    }
   }
 
   const survey = await createSurvey({ title: title.trim(), description, redirect_url, userId });

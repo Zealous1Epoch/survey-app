@@ -70,6 +70,43 @@ export async function POST(
     }
     answers = cleanAnswers;
 
+    // 新题型格式服务端校验（选答但未填格式非法也要拦）
+    for (const a of answers) {
+      const q = questions.find((qq) => qq.id === a.questionId);
+      if (!q || a.value === "") continue;
+      if (q.type === "date") {
+        const m = a.value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        const real = m && Number(m[2]) >= 1 && Number(m[2]) <= 12 &&
+          Number(m[3]) >= 1 && Number(m[3]) <= new Date(Number(m[1]), Number(m[2]), 0).getDate();
+        if (!real) {
+          return NextResponse.json({ error: `日期格式不正确：${q.title}` }, { status: 400 });
+        }
+      }
+      if (q.type === "nps") {
+        const n = Number(a.value);
+        if (!Number.isInteger(n) || n < 0 || n > 10) {
+          return NextResponse.json({ error: `NPS 分值不合法：${q.title}` }, { status: 400 });
+        }
+      }
+      if (q.type === "number") {
+        const n = Number(a.value);
+        if (!Number.isFinite(n)) {
+          return NextResponse.json({ error: `请输入数字：${q.title}` }, { status: 400 });
+        }
+        let cfg: { min?: number; max?: number } = {};
+        try {
+          const parsed = JSON.parse(q.options);
+          if (parsed && !Array.isArray(parsed)) cfg = parsed;
+        } catch { /* 选项列不是范围对象则视为无限 */ }
+        if (cfg.min !== undefined && cfg.min !== null && n < cfg.min) {
+          return NextResponse.json({ error: `${q.title}：不能小于 ${cfg.min}` }, { status: 400 });
+        }
+        if (cfg.max !== undefined && cfg.max !== null && n > cfg.max) {
+          return NextResponse.json({ error: `${q.title}：不能大于 ${cfg.max}` }, { status: 400 });
+        }
+      }
+    }
+
     const submissionId = await submitBulk(surveyId, answers);
 
     return NextResponse.json({

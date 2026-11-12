@@ -102,6 +102,13 @@ async function initTables(p: mysql.Pool): Promise<void> {
     await p.execute(`ALTER TABLE questions ADD COLUMN image_url VARCHAR(2000) DEFAULT ''`);
   }
 
+  // 迁移：type 列放宽到 VARCHAR(20)——新题型（dropdown 等）虽 10 字符够装，
+  // 但历史定义卡死在 10，为后续更长题型值留出余地
+  const typeCol = (qCols as any[]).find((c: any) => c.Field === "type");
+  if (typeCol && /^varchar\(1?\d\)$/i.test(String(typeCol.Type))) {
+    await p.execute(`ALTER TABLE questions MODIFY COLUMN type VARCHAR(20) NOT NULL`);
+  }
+
   // 迁移：检查 submission_id 列是否存在
   const [rCols] = await p.query(`SHOW COLUMNS FROM responses`) as any;
   if (!(rCols as any[]).some((c: any) => c.Field === "submission_id")) {

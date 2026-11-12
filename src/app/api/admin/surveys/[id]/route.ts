@@ -5,6 +5,7 @@ import {
   deleteSurvey,
 } from "@/lib/db/surveys";
 import { getQuestions, sanitizeQuestion } from "@/lib/db/questions";
+import { VALID_QUESTION_TYPES } from "@/lib/question-types";
 import { getDb } from "@/lib/db";
 import { v4 as uuid } from "uuid";
 
@@ -47,10 +48,9 @@ export async function PUT(
   const { title, description, redirect_url, questions } = body;
 
   // 先做全部校验再落库，避免 400 时标题已被改掉而题目未变的半成功状态
-  const VALID_TYPES = ["choice", "multi", "text", "rating"];
   if (questions && Array.isArray(questions)) {
     for (const q of questions) {
-      if (!VALID_TYPES.includes(q.type)) {
+      if (!VALID_QUESTION_TYPES.includes(q.type)) {
         return NextResponse.json({ error: "无效的题目类型" }, { status: 400 });
       }
     }

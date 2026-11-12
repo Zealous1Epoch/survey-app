@@ -29,7 +29,7 @@ export default function EditSurveyPage() {
         setRedirectUrl(data.redirect_url ?? "");
         // 回填 id 供服务端 diff 定位存量题目；缺 id 会被当成新题重建
         setQuestions(
-          data.questions.map((q: { id: string; type: string; title: string; options: string[]; required: boolean; image_url?: string; order: number }) => ({
+          data.questions.map((q: { id: string; type: string; title: string; options: string[] | { min?: number; max?: number }; required: boolean; image_url?: string; order: number }) => ({
             id: q.id,
             type: q.type,
             title: q.title,
@@ -63,7 +63,9 @@ export default function EditSurveyPage() {
         questions: questions.map((q) => ({
           ...q,
           title: q.title.trim(),
-          options: q.options?.filter((o) => o.trim()) ?? [],
+          options: Array.isArray(q.options)
+            ? q.options.filter((o) => o.trim())
+            : (q.options ?? []),
         })),
       }),
     });

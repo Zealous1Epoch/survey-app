@@ -145,7 +145,46 @@ export default function SurveyDataPage() {
 
   const activeQuestion = questions.find((q) => q.id === activeQ);
   const activeStats = activeQ ? stats[activeQ] : null;
+  const activeType = activeQuestion?.type;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // NPS：推荐者(9-10) 占比 − 贬损者(0-6) 占比
+  const npsData =
+    activeType === "nps" && activeStats && activeStats.total > 0
+      ? (() => {
+          let promo = 0,
+            pass = 0,
+            detr = 0;
+          for (const [k, c] of Object.entries(activeStats.values)) {
+            const n = Number(k);
+            if (n >= 9) promo += c;
+            else if (n <= 6) detr += c;
+            else pass += c;
+          }
+          const t = activeStats.total;
+          return { promo, pass, detr, score: Math.round(((promo - detr) / t) * 100) };
+        })()
+      : null;
+
+  // 数字题：均值摘要
+  const numData =
+    activeType === "number" && activeStats && activeStats.total > 0
+      ? (() => {
+          const parts: number[] = [];
+          for (const [k, c] of Object.entries(activeStats.values)) {
+            const n = Number(k);
+            if (Number.isFinite(n)) for (let i = 0; i < c; i++) parts.push(n);
+          }
+          if (parts.length === 0) return null;
+          const sum = parts.reduce((a, b) => a + b, 0);
+          return {
+            count: parts.length,
+            avg: Math.round((sum / parts.length) * 100) / 100,
+            min: Math.min(...parts),
+            max: Math.max(...parts),
+          };
+        })()
+      : null;
 
   if (loading) {
     return (
@@ -241,6 +280,62 @@ export default function SurveyDataPage() {
               </div>
               {activeStats.total === 0 ? (
                 <p className="py-6 text-center text-sm" style={{ color: "var(--text-muted)" }}>暂无回答</p>
+              ) : npsData ? (
+                <div>
+                  <div style={{ textAlign: "center", margin: "0.5rem 0 1.25rem" }}>
+                    <span className="nums" style={{ fontSize: 44, fontWeight: 700, color: "var(--primary)" }}>
+                      {npsData.score > 0 ? `+${npsData.score}` : npsData.score}
+                    </span>
+                    <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>NPS 净推荐值</p>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginBottom: "1.5rem" }}>
+                    {([
+                      ["推荐者 9-10", npsData.promo, "var(--accent-green)"],
+                      ["中立者 7-8", npsData.pass, "var(--text-muted)"],
+                      ["贬损者 0-6", npsData.detr, "var(--accent)"],
+                    ] as [string, number, string][]).map(([label, cnt, color]) => (
+                      <div
+                        key={label}
+                        className="flex-1 rounded-md px-3 py-2 text-center"
+                        style={{ background: "var(--bg-subtle)" }}
+                      >
+                        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>{label}</p>
+                        <p className="nums" style={{ fontSize: 18, fontWeight: 600, color }}>
+                          {Math.round((cnt / activeStats.total) * 100)}%
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 6 }}>
+                    {Array.from({ length: 11 }, (_, i) => {
+                      const c = activeStats.values[String(i)] ?? 0;
+                      const h = Math.round((c / activeStats.total) * 100);
+                      return (
+                        <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                          <span className="nums" style={{ fontSize: 12, color: "var(--text-muted)" }}>{c > 0 ? c : ""}</span>
+                          <div style={{ width: "100%", height: 72, display: "flex", alignItems: "flex-end" }}>
+                            <div style={{ width: "100%", height: `${Math.max(h, 2)}%`, background: "var(--primary)", borderRadius: 3, opacity: c > 0 ? 1 : 0.15 }} />
+                          </div>
+                          <span className="nums" style={{ fontSize: 12, color: "var(--text-muted)" }}>{i}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : numData ? (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                  {([
+                    ["有效作答", numData.count],
+                    ["平均", numData.avg],
+                    ["最小", numData.min],
+                    ["最大", numData.max],
+                  ] as [string, number][]).map(([label, val]) => (
+                    <div key={label} className="flex-1 rounded-md px-3 py-2 text-center" style={{ background: "var(--bg-subtle)", minWidth: 80 }}>
+                      <p style={{ fontSize: 12, color: "var(--text-muted)" }}>{label}</p>
+                      <p className="nums" style={{ fontSize: 18, fontWeight: 600, color: "var(--primary)" }}>{val}</p>
+                    </div>
+                  ))}
+                </div>
               ) : activeQuestion?.type === "text" ? (
                 /* 填空题：按条展示 */
                 <div className="space-y-2">

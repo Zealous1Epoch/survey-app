@@ -1,7 +1,9 @@
 import { getDb } from "@/lib/db";
 import { v4 as uuid } from "uuid";
+import type { QuestionType, QuestionData } from "@/lib/question-types";
 
-export type QuestionType = "choice" | "multi" | "text" | "rating";
+// 类型与常量单一来源在 question-types（无 db 依赖，可供客户端导入）
+export * from "@/lib/question-types";
 
 export interface Question {
   id: string;
@@ -13,17 +15,6 @@ export interface Question {
   redirect_url: string;
   image_url: string;
   order: number;
-}
-
-export interface QuestionData {
-  id?: string;
-  type: QuestionType;
-  title: string;
-  options?: string[];
-  required?: boolean;
-  redirect_url?: string;
-  image_url?: string;
-  order?: number;
 }
 
 export async function getQuestions(surveyId: string): Promise<Question[]> {

@@ -1,6 +1,7 @@
 "use client";
 
-import type { QuestionType, QuestionData } from "@/lib/db/questions";
+import type { QuestionType, QuestionData, NumberConfig } from "@/lib/question-types";
+import { OPTION_LIST_TYPES } from "@/lib/question-types";
 import { useRef, useState } from "react";
 
 interface Props {
@@ -13,6 +14,11 @@ const typeLabels: Record<QuestionType, string> = {
   multi: "多选",
   text: "填空",
   rating: "评分",
+  dropdown: "下拉单选",
+  nps: "NPS 推荐度",
+  date: "日期",
+  number: "数字",
+  yesno: "是/否",
 };
 
 export default function QuestionEditor({ questions, onChange }: Props) {
@@ -58,25 +64,42 @@ export default function QuestionEditor({ questions, onChange }: Props) {
     onChange(updated);
   };
 
+  // 选项类题型的选项一律按 string[] 处理（number 借 options 存范围对象，不参与这里）
+  const optList = (q: QuestionData): string[] =>
+    Array.isArray(q.options) ? q.options : [];
+
   const addOption = (qi: number) => {
-    const q = questions[qi];
-    update(qi, { options: [...(q.options ?? []), ""] });
+    update(qi, { options: [...optList(questions[qi]), ""] });
   };
 
   const updateOption = (qi: number, oi: number, val: string) => {
-    const opts = [...(questions[qi].options ?? [])];
+    const opts = [...optList(questions[qi])];
     opts[oi] = val;
     update(qi, { options: opts });
   };
 
   const removeOption = (qi: number, oi: number) => {
-    const opts = questions[qi].options?.filter((_, idx) => idx !== oi) ?? [];
-    update(qi, { options: opts });
+    update(qi, { options: optList(questions[qi]).filter((_, idx) => idx !== oi) });
+  };
+
+  const updateNumberCfg = (qi: number, patch: Partial<NumberConfig>) => {
+    const cur = !Array.isArray(questions[qi].options) ? ((questions[qi].options ?? {}) as NumberConfig) : {};
+    update(qi, { options: { ...cur, ...patch } });
   };
 
   const typeChange = (qi: number, type: QuestionType) => {
+    const q = questions[qi];
+    if (type === q.type) return;
+    const hasFilledOpts = optList(q).some((o) => o.trim());
+    const targetHasOpts = OPTION_LIST_TYPES.includes(type);
+    // 选项类题型之间切换：保留已填选项；切到无选项题型：确认后清空
+    if (hasFilledOpts && !targetHasOpts && !confirm("切换题型会清空已填写的选项，确定继续？")) return;
     const defaults: Partial<QuestionData> = { type };
-    defaults.options = type === "choice" || type === "multi" ? [""] : [];
+    if (targetHasOpts) {
+      defaults.options = optList(q).length > 0 ? optList(q) : [""];
+    } else {
+      defaults.options = type === "number" ? {} : [];
+    }
     update(qi, defaults);
   };
 
@@ -221,10 +244,10 @@ export default function QuestionEditor({ questions, onChange }: Props) {
               className="input-field mb-3"
             />
 
-            {/* Options for choice/multi */}
-            {(q.type === "choice" || q.type === "multi") && (
+            {/* Options for choice/multi/dropdown */}
+            {OPTION_LIST_TYPES.includes(q.type) && (
               <div className="mb-3 space-y-2">
-                {(q.options ?? []).map((opt, oi) => (
+                {optList(q).map((opt, oi) => (
                   <div key={oi} className="flex items-center gap-2">
                     <span
                       className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md text-xs font-medium"
@@ -262,6 +285,30 @@ export default function QuestionEditor({ questions, onChange }: Props) {
                   </svg>
                   添加选项
                 </button>
+              </div>
+            )}
+
+            {/* Number range config */}
+            {q.type === "number" && (
+              <div className="mb-3 flex items-center gap-2">
+                <span className="text-xs flex-shrink-0" style={{ color: "var(--text-muted)" }}>范围</span>
+                <input
+                  type="number"
+                  value={(q.options && !Array.isArray(q.options) ? q.options.min : undefined) ?? ""}
+                  onChange={(e) => updateNumberCfg(qi, { min: e.target.value === "" ? undefined : Number(e.target.value) })}
+                  placeholder="最小"
+                  className="input-field text-sm py-2"
+                  style={{ width: 90 }}
+                />
+                <span style={{ color: "var(--text-muted)" }}>~</span>
+                <input
+                  type="number"
+                  value={(q.options && !Array.isArray(q.options) ? q.options.max : undefined) ?? ""}
+                  onChange={(e) => updateNumberCfg(qi, { max: e.target.value === "" ? undefined : Number(e.target.value) })}
+                  placeholder="最大"
+                  className="input-field text-sm py-2"
+                  style={{ width: 90 }}
+                />
               </div>
             )}
 
@@ -335,15 +382,6 @@ export default function QuestionEditor({ questions, onChange }: Props) {
                 </div>
               )}
             </div>
-
-            {/* Redirect URL */}
-            <input
-              type="text"
-              value={q.redirect_url ?? ""}
-              onChange={(e) => update(qi, { redirect_url: e.target.value })}
-              placeholder="提交后跳转地址（可选，留空使用问卷默认）"
-              className="input-field text-xs"
-            />
           </div>
         ))}
 
