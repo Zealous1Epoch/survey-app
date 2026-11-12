@@ -295,3 +295,124 @@ export async function getExportRows(
     return row;
   });
 }
+
+export interface EditLogRow {
+  id: string;
+  survey_id: string;
+  submission_id: string;
+  question_id: string;
+  question_title: string;
+  old_value: string | null;
+  new_value: string | null;
+  editor_id: string;
+  editor_name: string;
+  created_at: string;
+}
+
+/** 管理员修改答卷：按完整答案集与库存量 diff——
+ *  同题改值走 UPDATE、新答题走 INSERT、清空答题走 DELETE，
+ *  每个变化题目在同一事务里落一条修改日志（题目快照存标题） */
+export async function updateSubmission(
+  surveyId: string,
+  submissionId: string,
+  answers: Array<{ questionId: string; value: string }>,
+  editor: { id: string; name: string }
+): Promise<{ updated: number; inserted: number; deleted: number } | null> {
+  const db = await getDb();
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [oldRows] = await connection.execute(
+      "SELECT question_id, value FROM responses WHERE survey_id = ? AND submission_id = ?",
+      [surveyId, submissionId]
+    );
+    const oldMap = new Map<string, string>(
+      (oldRows as Array<{ question_id: string; value: string }>).map((r) => [r.question_id, r.value])
+    );
+    if (oldMap.size === 0) {
+      // 提交不存在（或本就没有任何答案行）——回滚让路由层报 404
+      await connection.rollback();
+      return null;
+    }
+
+    // 日志里存当时的题标快照，题目后续改名/删除不影响历史可读
+    const [qRows] = await connection.execute(
+      "SELECT id, title FROM questions WHERE survey_id = ?",
+      [surveyId]
+    );
+    const titles = new Map<string, string>(
+      (qRows as Array<{ id: string; title: string }>).map((r) => [r.id, r.title])
+    );
+
+    const now = new Date().toISOString();
+    const newMap = new Map(answers.map((a) => [a.questionId, a.value]));
+    let updated = 0;
+    let inserted = 0;
+    let deleted = 0;
+
+    const logEdit = async (questionId: string, oldValue: string, newValue: string) => {
+      await connection.execute(
+        `INSERT INTO response_edit_logs
+         (id, survey_id, submission_id, question_id, question_title, old_value, new_value, editor_id, editor_name, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [uuid(), surveyId, submissionId, questionId, titles.get(questionId) ?? "", oldValue, newValue, editor.id, editor.name, now]
+      );
+    };
+
+    for (const [questionId, value] of newMap) {
+      if (oldMap.has(questionId)) {
+        if (oldMap.get(questionId) !== value) {
+          await connection.execute(
+            "UPDATE responses SET value = ? WHERE survey_id = ? AND submission_id = ? AND question_id = ?",
+            [value, surveyId, submissionId, questionId]
+          );
+          await logEdit(questionId, oldMap.get(questionId)!, value);
+          updated++;
+        }
+      } else {
+        await connection.execute(
+          "INSERT INTO responses (id, question_id, survey_id, submission_id, value, submitted_at) VALUES (?, ?, ?, ?, ?, ?)",
+          [uuid(), questionId, surveyId, submissionId, value, now]
+        );
+        await logEdit(questionId, "", value);
+        inserted++;
+      }
+    }
+
+    for (const [questionId, oldValue] of oldMap) {
+      if (!newMap.has(questionId)) {
+        await connection.execute(
+          "DELETE FROM responses WHERE survey_id = ? AND submission_id = ? AND question_id = ?",
+          [surveyId, submissionId, questionId]
+        );
+        await logEdit(questionId, oldValue, "");
+        deleted++;
+      }
+    }
+
+    await connection.commit();
+    return { updated, inserted, deleted };
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+}
+
+/** 修改日志（提交级或问卷级），新→旧 */
+export async function getEditLogs(surveyId: string, submissionId?: string): Promise<EditLogRow[]> {
+  const db = await getDb();
+  let sql = `SELECT id, survey_id, submission_id, question_id, question_title,
+             old_value, new_value, editor_id, editor_name, created_at
+             FROM response_edit_logs WHERE survey_id = ?`;
+  const params: string[] = [surveyId];
+  if (submissionId) {
+    sql += " AND submission_id = ?";
+    params.push(submissionId);
+  }
+  sql += " ORDER BY created_at DESC";
+  const [rows] = await db.execute(sql, params);
+  return rows as EditLogRow[];
+}

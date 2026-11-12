@@ -90,6 +90,24 @@ async function initTables(p: mysql.Pool): Promise<void> {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
+  await p.execute(`
+    CREATE TABLE IF NOT EXISTS response_edit_logs (
+      id VARCHAR(36) PRIMARY KEY,
+      survey_id VARCHAR(36) NOT NULL,
+      submission_id VARCHAR(36) NOT NULL,
+      question_id VARCHAR(36) NOT NULL,
+      question_title VARCHAR(500) DEFAULT '',
+      old_value TEXT,
+      new_value TEXT,
+      editor_id VARCHAR(36) NOT NULL,
+      editor_name VARCHAR(100) DEFAULT '',
+      created_at VARCHAR(30) NOT NULL,
+      FOREIGN KEY (survey_id) REFERENCES surveys(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  try { await p.execute(`CREATE INDEX idx_edit_logs_survey ON response_edit_logs(survey_id)`); } catch (_) {}
+  try { await p.execute(`CREATE INDEX idx_edit_logs_submission ON response_edit_logs(submission_id)`); } catch (_) {}
+
   // 索引（MySQL 中 CREATE INDEX IF NOT EXISTS 从 8.0.31 开始支持）
   try { await p.execute(`CREATE INDEX idx_questions_survey ON questions(survey_id)`); } catch (_) {}
   try { await p.execute(`CREATE INDEX idx_responses_survey ON responses(survey_id)`); } catch (_) {}

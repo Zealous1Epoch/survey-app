@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import SubmissionDrawer from "@/components/submission-drawer";
 
 interface QuestionInfo {
   id: string;
   title: string;
   type: string;
-  options: string[];
+  /** 选项数组或 number 题范围对象，编辑答卷抽屉透传给 AnswerInput 用 */
+  options: unknown;
 }
 
 interface StatsData {
@@ -44,6 +46,9 @@ export default function SurveyDataPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [surveyTitle, setSurveyTitle] = useState("");
+  const [me, setMe] = useState<{ username: string; role: string } | null>(null);
+  const [viewSub, setViewSub] = useState<SubmissionRow | null>(null);
+  const isSuper = me?.role === "super_admin";
 
   const loadSubmissions = useCallback(
     async (p: number) => {
@@ -58,6 +63,10 @@ export default function SurveyDataPage() {
 
   // 挂载：加载问卷结构与第一页回答（回答由下方 page effect 触发）
   useEffect(() => {
+    fetch("/api/survey-admin/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setMe)
+      .catch(() => setMe(null));
     (async () => {
       try {
         const survey = await check(await fetch(`/api/survey-admin/surveys/${id}`));
@@ -482,6 +491,12 @@ export default function SurveyDataPage() {
                         </td>
                         <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
                           <button
+                            onClick={() => setViewSub(sub)}
+                            className="mr-3 text-xs transition-colors text-[color:var(--text-muted)] hover:text-[color:var(--primary)]"
+                          >
+                            查看
+                          </button>
+                          <button
                             onClick={() => handleDeleteSubmission(sub.submission_id)}
                             className="text-xs transition-colors text-[color:var(--text-muted)] hover:text-[color:var(--accent)]"
                           >
@@ -521,6 +536,21 @@ export default function SurveyDataPage() {
             )}
           </div>
         </div>
+      )}
+
+      {viewSub && (
+        <SubmissionDrawer
+          surveyId={id}
+          questions={questions}
+          submission={viewSub}
+          canEdit={isSuper}
+          onClose={() => setViewSub(null)}
+          onSaved={() => {
+            // 答案变了统计就得重算；列表也刷一遍
+            setStats({});
+            loadSubmissions(page).catch(() => {});
+          }}
+        />
       )}
     </div>
   );
